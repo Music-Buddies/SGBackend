@@ -40,7 +40,8 @@ public class AuthenticationController  : ControllerBase
         // Instruct the cookies middleware to delete the local cookie created
         // when the user agent is redirected from the external identity provider
         // after a successful authentication flow (e.g Google or Facebook).
-        return SignOut(new AuthenticationProperties { RedirectUri = "/" },
-            CookieAuthenticationDefaults.AuthenticationScheme);
+        return SignOut(new AuthenticationProperties { RedirectUri = "/" }
+            , CookieAuthenticationDefaults.AuthenticationScheme
+            );
     }
 }

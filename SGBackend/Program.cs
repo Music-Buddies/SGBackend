@@ -40,9 +40,11 @@ var app = builder.Build();
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
+    Console.WriteLine("is development");
     // overwrite host for oauth redirect
     app.Use(async (context,next) =>
     {
+        Console.WriteLine("rewriting");
         context.Request.Host =new HostString("localhost:5173");
         await next();
     });
