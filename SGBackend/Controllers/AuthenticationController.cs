@@ -8,15 +8,11 @@ namespace SGBackend.Controllers;
 [ApiController]
 public class AuthenticationController  : ControllerBase
 {
-
-    [HttpGet("~/signin-spotify")]
-    public async Task<IActionResult> GetCode([FromQuery] string code)
-    {
-        return Ok();
-    }
     [HttpPost("~/signin")]
     public async Task<IActionResult> SignIn()
     {
+        // normally [FromForm] provider
+        // with  <input type="hidden" name="Provider" value="@scheme.Name" />
         var provider = "Spotify";
         // Note: the "provider" parameter corresponds to the external
         // authentication provider choosen by the user agent.
