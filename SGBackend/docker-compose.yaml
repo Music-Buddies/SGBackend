@@ -1,0 +1,16 @@
+version: "3.9"
+
+services:
+  mysql:
+    restart: always
+    image: mysql:8.0.26
+    cap_add:
+      - SYS_NICE
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=sg
+      - MYSQL_ROOT_HOST=%
+    ports:
+      - "3306:3306"
+    volumes:
+      - vmysql:/var/lib/mysql
