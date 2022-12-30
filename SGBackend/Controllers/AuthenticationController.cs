@@ -8,6 +8,7 @@ namespace SGBackend.Controllers;
 [ApiController]
 public class AuthenticationController  : ControllerBase
 {
+   
     [HttpPost("~/signin")]
     public async Task<IActionResult> SignIn()
     {
@@ -25,7 +26,8 @@ public class AuthenticationController  : ControllerBase
         {
             return BadRequest();
         }
-        var c =Challenge(new AuthenticationProperties { RedirectUri = "/" }, provider);
+        
+        var c = Challenge(new AuthenticationProperties { RedirectUri = "/" }, provider);
 
         // Instruct the middleware corresponding to the requested external identity
         // provider to redirect the user agent to its own authorization endpoint.
