@@ -6,8 +6,7 @@
       "dotnetRunMessages": true,
       "applicationUrl": "http://localhost:5256",
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development",
-        "JWT_KEY": "testKeytestKeytestKeytestKey"
+        "ASPNETCORE_ENVIRONMENT": "Development"
       }
     }
   }
