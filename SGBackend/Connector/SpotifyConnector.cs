@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Authentication.OAuth;
 using Microsoft.EntityFrameworkCore;
 using SGBackend.Models;
 
@@ -8,17 +9,35 @@ public class SpotifyConnector : IContentConnector
 {
     private readonly ISpotifyApi _spotifyApi;
 
-    public SpotifyConnector(ISpotifyApi spotifyApi)
+    private readonly ISpotifyAuthApi _spotifyAuthApi;
+
+    private readonly SgDbContext _dbContext;
+
+    public SpotifyConnector(ISpotifyApi spotifyApi, ISpotifyAuthApi spotifyAuthApi, SgDbContext dbContext)
     {
         _spotifyApi = spotifyApi;
+        _spotifyAuthApi = spotifyAuthApi;
+        this._dbContext = dbContext;
     }
 
-    public async Task<User> GetOrCreateUser(ClaimsIdentity claimsIdentity, SgDbContext dbContext)
+    public async Task<string> GetAccessTokenUsingRefreshToken(User dbUser)
     {
+        var token = await _spotifyAuthApi.GetTokenFromRefreshToken(new Dictionary<string, object>()
+        {
+            { "grant_type", "refresh_token" },
+            { "refresh_token", dbUser.SpotifyRefreshToken }
+        });
+
+        return token.access_token;
+    }
+    
+    public async Task<User> HandleUserLoggedIn(OAuthCreatingTicketContext context)
+    {
+        var claimsIdentity = context.Identity;
         var spotifyUserUrl = claimsIdentity.FindFirst("urn:spotify:url");
         if (spotifyUserUrl != null)
         {
-            var dbUser = await dbContext.User.FirstOrDefaultAsync(user => user.SpotifyId == spotifyUserUrl.Value);
+            var dbUser = await _dbContext.User.FirstOrDefaultAsync(user => user.SpotifyId == spotifyUserUrl.Value);
             if (dbUser == null)
             {
                 var nameClaim = claimsIdentity.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name");
@@ -26,24 +45,27 @@ public class SpotifyConnector : IContentConnector
                 dbUser = new User
                 {
                     SpotifyId = spotifyUserUrl.Value,
-                    Name = nameClaim != null ? nameClaim.Value : string.Empty
+                    Name = nameClaim != null ? nameClaim.Value : string.Empty,
+                    SpotifyRefreshToken = context.RefreshToken
                 };
-                dbContext.User.Add(dbUser);
-                await dbContext.SaveChangesAsync();
+                _dbContext.User.Add(dbUser);
             }
-
+            else
+            {
+                // user exists only update refresh token
+                dbUser.SpotifyRefreshToken = context.RefreshToken;
+            }
+            
+            await _dbContext.SaveChangesAsync();
             return dbUser;
         }
 
         throw new Exception("could not find user url in claims from spotify");
     }
 
-    public async Task FetchEntireContentHistory(string accessToken)
+    public async Task FetchAvailableContentHistory(string accessToken)
     {
-        var history = await _spotifyApi.GetHistory(accessToken);
+        var history = await _spotifyApi.GetEntireAvailableHistory("Bearer " + accessToken);
     }
-
-    public void FetchNewerThanRecord()
-    {
-    }
+    
 }

@@ -1,6 +1,6 @@
 namespace SGBackend.Provider;
 
-public class SecretsProvider : ISecretsProvider 
+public class LocalSecretsProvider : ISecretsProvider 
 {
     public string GetSecret(string secretName)
     {

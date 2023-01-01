@@ -19,28 +19,17 @@ public class Startup
         services.AddExternalApiClients();
 
         services.AddDbContext<SgDbContext>();
-        services.AddSingleton<ISecretsProvider, SecretsProvider>();
+        services.AddSingleton<ISecretsProvider, LocalSecretsProvider>();
         services.AddScoped<SpotifyConnector>();
+        services.AddSingleton<TokenProvider>();
 
         services.AddDatabaseDeveloperPageExceptionFilter();
 
         services.AddControllers();
 
+        // configure jwt validation using tokenprovider
         services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
-            .Configure<ISecretsProvider>(
-                (options, provider) =>
-                {
-                    options.TokenValidationParameters = new TokenValidationParameters
-                    {
-                        ValidateAudience = false,
-                        ValidateIssuer = true,
-                        ValidateLifetime = true,
-                        ValidateIssuerSigningKey = true,
-                        ValidIssuer = "http://localhost:5173",
-                        IssuerSigningKey =
-                            new SymmetricSecurityKey(Encoding.UTF8.GetBytes(provider.GetSecret("jwt-key")))
-                    };
-                });
+            .Configure<TokenProvider>((options, provider) => options.TokenValidationParameters = provider.GetJwtValidationParameters());
 
         services.AddAuthentication(options =>
         {
@@ -64,31 +53,17 @@ public class Startup
                 OnCreatingTicket = async context =>
                 {
                     // this means the user logged in successfully at spotify
-                    var dbContext = context.HttpContext.RequestServices.GetRequiredService<SgDbContext>();
                     var spotifyConnector = context.HttpContext.RequestServices.GetRequiredService<SpotifyConnector>();
-                    var secretsProvider = context.HttpContext.RequestServices.GetRequiredService<ISecretsProvider>();
+                    var tokenProvider = context.HttpContext.RequestServices.GetRequiredService<TokenProvider>();
 
-                    var dbUser = await spotifyConnector.GetOrCreateUser(context.Identity, dbContext);
+                    var dbUser = await spotifyConnector.HandleUserLoggedIn(context);
 
-                    // issue token with user id
-                    var key = Encoding.UTF8.GetBytes(secretsProvider.GetSecret("jwt-key"));
-
-                    var handler = new JsonWebTokenHandler();
-                    var token = handler.CreateToken(new SecurityTokenDescriptor
+                    // write spotify access token to jwt
+                    context.Response.Cookies.Append("jwt", tokenProvider.GetJwt(dbUser, new[]
                     {
-                        Issuer = "http://localhost:5173",
-                        Subject = new ClaimsIdentity(new[]
-                        {
-                            new Claim("sub", dbUser.Id.ToString()),
-                            new Claim("name", dbUser.Name),
-                            new Claim("spotify-token", context.AccessToken!)
-                        }),
-                        SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key),
-                            SecurityAlgorithms.HmacSha512Signature),
-                        Expires = DateTime.Now.AddHours(3)
-                    });
-
-                    context.Response.Cookies.Append("jwt", token);
+                        new Claim("spotify-token", context.AccessToken!)
+                    }));
+                    
                     // cookie is still signed in but its irrelevant since we are using
                     // jwt scheme for auth
                 }
@@ -101,6 +76,8 @@ public class Startup
         // Configure the HTTP request pipeline.
         if (app.Environment.IsDevelopment())
             // overwrite host for oauth redirect
+            // dev fe is running on different port, vite.config.js proxies
+            // the relevant oauth requests to the dev running backend
             app.Use(async (context, next) =>
             {
                 context.Request.Host = new HostString("localhost:5173");
