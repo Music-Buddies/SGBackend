@@ -5,7 +5,6 @@ namespace SGBackend;
 
 public class SgDbContext : DbContext
 {
-
     public DbSet<User> User { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
@@ -19,9 +18,9 @@ public class SgDbContext : DbContext
 
         modelbuilder.Entity<User>(entity =>
         {
-            entity.HasKey(e => e.ID);
+            entity.HasKey(e => e.Id);
             entity.Property(e => e.Name);
-            entity.Property(e => e.SpotifyURL);
+            entity.Property(e => e.SpotifyId);
         });
     }
 }

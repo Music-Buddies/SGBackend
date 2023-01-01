@@ -6,11 +6,18 @@ namespace SGBackend.Controllers;
 [ApiController]
 public class TestController : ControllerBase
 {
+    [HttpGet("/gets")]
+    public async Task<string> testGets()
+    {
+        return "test";
+    }
+    
     [Authorize]
     [HttpGet("/get")]
     public async Task<string> testGet()
     {
-        var client = HttpContext.Request.HttpContext.RequestServices.GetService<IHttpClientFactory>()?.CreateClient("SpotifyApi");
+        var client = HttpContext.Request.HttpContext.RequestServices.GetService<IHttpClientFactory>()
+            ?.CreateClient("SpotifyApi");
         var token = HttpContext.User.FindFirst("spotify-token").Value;
         var httpRequestMessage = new HttpRequestMessage(
             HttpMethod.Get,
@@ -18,7 +25,7 @@ public class TestController : ControllerBase
         {
             Headers =
             {
-                {"Authorization", "Bearer " + token}
+                { "Authorization", "Bearer " + token }
             }
         };
         var resp = await client.SendAsync(httpRequestMessage);
@@ -26,5 +33,4 @@ public class TestController : ControllerBase
 
         return body;
     }
-    
 }
