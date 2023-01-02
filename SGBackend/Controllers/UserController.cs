@@ -25,10 +25,11 @@ public class UserController : ControllerBase
         var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
         var dbUser = await _dbContext.User.Include(u => u.PlaybackRecords).FirstAsync(u => u.Id == userId);
 
+        var earliestRecord = dbUser.PlaybackRecords.MinBy(r => r.PlayedAt);
         return new ProfileInformation()
         {
             username = dbUser.Name,
-            trackingSince = dbUser.PlaybackRecords.OrderBy(r => r.PlayedAt).First().PlayedAt,
+            trackingSince =  earliestRecord?.PlayedAt,
             profileImage = dbUser.SpotifyProfileUrl
         };
     }

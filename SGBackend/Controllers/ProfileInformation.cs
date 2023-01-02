@@ -6,5 +6,5 @@ public class ProfileInformation
     
     public string profileImage { get; set; }
     
-    public DateTime trackingSince { get; set; }
+    public DateTime? trackingSince { get; set; }
 }
