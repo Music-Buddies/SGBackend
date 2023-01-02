@@ -1,4 +1,8 @@
+using SGBackend.Models;
+
 namespace SGBackend.Connector;
+
+
 
 public class SpotifyListenHistory
 {
@@ -7,6 +11,39 @@ public class SpotifyListenHistory
     public Cursors cursors { get; set; }
     public int limit { get; set; }
     public string href { get; set; }
+
+    public HashSet<Media> GetMedia()
+    {
+        return items.Select(item => new Media()
+        {
+            Title = item.track.name,
+            MediaSource = MediaSource.Spotify,
+            LinkToMedia = item.track.href,
+            ExplicitContent = item.track.@explicit,
+            Artists = item.track.artists.Select(a => new SGBackend.Models.Artist()
+            {
+                Name = a.name
+            }).ToList(),
+            Images = item.track.album.images.Select(i => new MediaImage()
+            {
+                height = i.height,
+                imageUrl= i.url,
+                width = i.width
+            }).ToList()
+        }).ToHashSet();
+    }
+
+    public List<PlaybackRecord> GetPlaybackRecords(Media[] existingMediaSpotify, User user)
+    {
+        return items.Select(item => new PlaybackRecord()
+        {
+            Media = existingMediaSpotify.First(media => media.MediaSource == MediaSource.Spotify && media.LinkToMedia == item.track.href),
+            PlayedAt = item.played_at,
+            PlayedSeconds = item.track.duration_ms,
+            User = user
+        }).ToList();
+    }
+    
 }
 
 public class Album

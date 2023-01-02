@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authentication.OAuth;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
 using SGBackend.Connector;
@@ -22,6 +23,7 @@ public class Startup
         services.AddSingleton<ISecretsProvider, LocalSecretsProvider>();
         services.AddScoped<SpotifyConnector>();
         services.AddSingleton<TokenProvider>();
+        services.AddScoped<PlaybackService>();
 
         services.AddDatabaseDeveloperPageExceptionFilter();
 
@@ -57,7 +59,7 @@ public class Startup
                     var tokenProvider = context.HttpContext.RequestServices.GetRequiredService<TokenProvider>();
 
                     var dbUser = await spotifyConnector.HandleUserLoggedIn(context);
-
+                    
                     // write spotify access token to jwt
                     context.Response.Cookies.Append("jwt", tokenProvider.GetJwt(dbUser, new[]
                     {
@@ -66,6 +68,15 @@ public class Startup
                     
                     // cookie is still signed in but its irrelevant since we are using
                     // jwt scheme for auth
+                    
+                    // TODO: move in quartz logic, only for dev now
+                    var playbackService = context.HttpContext.RequestServices.GetRequiredService<PlaybackService>();
+                    var dbContext = context.HttpContext.RequestServices.GetRequiredService<SgDbContext>();
+                    await playbackService.UpdateSpotifyRecords(
+                        await spotifyConnector.FetchAvailableContentHistory(context.AccessToken), dbUser);
+
+                    await playbackService.UpdatePlaybackSummary(await dbContext.User.Include(u => u.PlaybackSummaries)
+                        .FirstAsync(u => u.Id == dbUser.Id));
                 }
             };
         });

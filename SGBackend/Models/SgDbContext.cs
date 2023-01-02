@@ -1,11 +1,22 @@
 using Microsoft.EntityFrameworkCore;
 using SGBackend.Models;
+using Image = SGBackend.Connector.Image;
 
 namespace SGBackend;
 
 public class SgDbContext : DbContext
 {
     public DbSet<User> User { get; set; }
+    
+    public DbSet<Media> Media { get; set; }
+    
+    public DbSet<PlaybackRecord> PlaybackRecords { get; set; }
+    
+    public DbSet<PlaybackSummary> PlaybackSummaries { get; set; }
+
+    public DbSet<MediaImage> Images { get; set; }
+    
+    public DbSet<Artist> Artists { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
@@ -15,12 +26,5 @@ public class SgDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelbuilder)
     {
         base.OnModelCreating(modelbuilder);
-
-        modelbuilder.Entity<User>(entity =>
-        {
-            entity.HasKey(e => e.Id);
-            entity.Property(e => e.Name);
-            entity.Property(e => e.SpotifyId);
-        });
     }
 }

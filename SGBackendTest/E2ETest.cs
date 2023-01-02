@@ -3,11 +3,11 @@ using SGBackend;
 
 namespace SGBackendTest;
 
-public class UnitTest1 : IClassFixture<WebApplicationFactory<Startup>>
+public class E2ETest : IClassFixture<WebApplicationFactory<Startup>>
 {
     private readonly WebApplicationFactory<Startup> _factory;
 
-    public UnitTest1(WebApplicationFactory<Startup> factory)
+    public E2ETest(WebApplicationFactory<Startup> factory)
     {
         _factory = factory;
     }

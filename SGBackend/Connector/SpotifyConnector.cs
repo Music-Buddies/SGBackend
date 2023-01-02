@@ -17,7 +17,7 @@ public class SpotifyConnector : IContentConnector
     {
         _spotifyApi = spotifyApi;
         _spotifyAuthApi = spotifyAuthApi;
-        this._dbContext = dbContext;
+        _dbContext = dbContext;
     }
 
     public async Task<string> GetAccessTokenUsingRefreshToken(User dbUser)
@@ -37,16 +37,20 @@ public class SpotifyConnector : IContentConnector
         var spotifyUserUrl = claimsIdentity.FindFirst("urn:spotify:url");
         if (spotifyUserUrl != null)
         {
-            var dbUser = await _dbContext.User.FirstOrDefaultAsync(user => user.SpotifyId == spotifyUserUrl.Value);
+            var dbUser = await _dbContext.User
+                .Include(u => u.PlaybackRecords)
+                .FirstOrDefaultAsync(user => user.SpotifyId == spotifyUserUrl.Value);
             if (dbUser == null)
             {
                 var nameClaim = claimsIdentity.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name");
+                var profileUrl = claimsIdentity.FindFirst("urn:spotify:profilepicture");
                 // create in db
                 dbUser = new User
                 {
                     SpotifyId = spotifyUserUrl.Value,
                     Name = nameClaim != null ? nameClaim.Value : string.Empty,
-                    SpotifyRefreshToken = context.RefreshToken
+                    SpotifyRefreshToken = context.RefreshToken,
+                    SpotifyProfileUrl = profileUrl.Value
                 };
                 _dbContext.User.Add(dbUser);
             }
@@ -63,9 +67,10 @@ public class SpotifyConnector : IContentConnector
         throw new Exception("could not find user url in claims from spotify");
     }
 
-    public async Task FetchAvailableContentHistory(string accessToken)
+    public async Task<SpotifyListenHistory> FetchAvailableContentHistory(string accessToken)
     {
         var history = await _spotifyApi.GetEntireAvailableHistory("Bearer " + accessToken);
+        return history;
     }
     
 }
