@@ -13,11 +13,14 @@ public class SpotifyConnector : IContentConnector
 
     private readonly SgDbContext _dbContext;
 
-    public SpotifyConnector(ISpotifyApi spotifyApi, ISpotifyAuthApi spotifyAuthApi, SgDbContext dbContext)
+    private readonly ILogger<SpotifyConnector> _logger;
+
+    public SpotifyConnector(ISpotifyApi spotifyApi, ISpotifyAuthApi spotifyAuthApi, SgDbContext dbContext, ILogger<SpotifyConnector> logger)
     {
         _spotifyApi = spotifyApi;
         _spotifyAuthApi = spotifyAuthApi;
         _dbContext = dbContext;
+        _logger = logger;
     }
 
     public async Task<string> GetAccessTokenUsingRefreshToken(User dbUser)
@@ -34,6 +37,8 @@ public class SpotifyConnector : IContentConnector
     public async Task<User> HandleUserLoggedIn(OAuthCreatingTicketContext context)
     {
         var claimsIdentity = context.Identity;
+        _logger.LogInformation(string.Join(", ", claimsIdentity.Claims.Select(claim => claim.ToString())));
+        
         var spotifyUserUrl = claimsIdentity.FindFirst("urn:spotify:url");
         if (spotifyUserUrl != null)
         {
