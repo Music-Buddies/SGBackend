@@ -18,7 +18,7 @@ public class SpotifyListenHistory
         {
             Title = item.track.name,
             MediaSource = MediaSource.Spotify,
-            LinkToMedia = item.track.href,
+            LinkToMedia = item.track.external_urls.spotify,
             ExplicitContent = item.track.@explicit,
             Artists = item.track.artists.Select(a => new SGBackend.Models.Artist()
             {
@@ -37,7 +37,7 @@ public class SpotifyListenHistory
     {
         return items.Select(item => new PlaybackRecord()
         {
-            Media = existingMediaSpotify.First(media => media.MediaSource == MediaSource.Spotify && media.LinkToMedia == item.track.href),
+            Media = existingMediaSpotify.First(media => media.MediaSource == MediaSource.Spotify && media.LinkToMedia == item.track.external_urls.spotify),
             PlayedAt = item.played_at,
             PlayedSeconds = item.track.duration_ms,
             User = user
