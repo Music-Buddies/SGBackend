@@ -55,7 +55,7 @@ public class SpotifyConnector : IContentConnector
                     SpotifyId = spotifyUserUrl.Value,
                     Name = nameClaim != null ? nameClaim.Value : string.Empty,
                     SpotifyRefreshToken = context.RefreshToken,
-                    SpotifyProfileUrl = profileUrl.Value
+                    SpotifyProfileUrl = profileUrl != null ? profileUrl.Value : "https://miro.medium.com/max/659/1*8xraf6eyaXh-myNXOXkqLA.jpeg"
                 };
                 _dbContext.User.Add(dbUser);
             }
