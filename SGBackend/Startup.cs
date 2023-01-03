@@ -7,9 +7,11 @@ using Microsoft.AspNetCore.Authentication.OAuth;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 using SGBackend.Connector;
 using SGBackend.Controllers;
 using SGBackend.Provider;
+using SGBackend.Service;
 
 namespace SGBackend;
 
@@ -49,7 +51,7 @@ public class Startup
             options.ClientId = "de22eb2cc8c9478aa6f81f401bcaa23a";
             options.ClientSecret = "03e25493374146c987ee581f6f64ad1f";
             options.Scope.Add("user-read-recently-played");
-
+            
             options.Events = new OAuthEvents
             {
                 OnCreatingTicket = async context =>
@@ -71,14 +73,43 @@ public class Startup
                     
                     // TODO: move in quartz logic, only for dev now
                     var playbackService = context.HttpContext.RequestServices.GetRequiredService<PlaybackService>();
-                    var dbContext = context.HttpContext.RequestServices.GetRequiredService<SgDbContext>();
-                    await playbackService.UpdateSpotifyRecords(
-                        await spotifyConnector.FetchAvailableContentHistory(context.AccessToken), dbUser);
 
-                    await playbackService.UpdatePlaybackSummary(await dbContext.User.Include(u => u.PlaybackSummaries)
-                        .FirstAsync(u => u.Id == dbUser.Id));
+                    var newInsertedRecords = await playbackService.InsertNewRecords(dbUser,
+                        await spotifyConnector.FetchAvailableContentHistory(context.AccessToken));
+
+                    var upsertedSummaries = await playbackService.UpsertPlaybackSummary(dbUser, newInsertedRecords);
+
+                    await playbackService.UpdatePlaybackMatches(upsertedSummaries, dbUser);
                 }
             };
+        });
+        
+        services.AddSwaggerGen(option =>
+        {
+            option.SwaggerDoc("v1", new OpenApiInfo { Title = "Demo API", Version = "v1" });
+            option.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+            {
+                In = ParameterLocation.Header,
+                Description = "Please enter a valid token",
+                Name = "Authorization",
+                Type = SecuritySchemeType.Http,
+                BearerFormat = "JWT",
+                Scheme = "Bearer"
+            });
+            option.AddSecurityRequirement(new OpenApiSecurityRequirement
+            {
+                {
+                    new OpenApiSecurityScheme
+                    {
+                        Reference = new OpenApiReference
+                        {
+                            Type=ReferenceType.SecurityScheme,
+                            Id="Bearer"
+                        }
+                    },
+                    new string[]{}
+                }
+            });
         });
     }
 
@@ -86,6 +117,9 @@ public class Startup
     {
         // Configure the HTTP request pipeline.
         if (app.Environment.IsDevelopment())
+        {
+            app.UseSwagger();
+            app.UseSwaggerUI();
             // overwrite host for oauth redirect
             // dev fe is running on different port, vite.config.js proxies
             // the relevant oauth requests to the dev running backend
@@ -94,6 +128,7 @@ public class Startup
                 context.Request.Host = new HostString("localhost:5173");
                 await next();
             });
+        }
 
         using (var scope = app.Services.CreateScope())
         {

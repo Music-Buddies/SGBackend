@@ -17,6 +17,8 @@ public class SgDbContext : DbContext
     public DbSet<MediaImage> Images { get; set; }
     
     public DbSet<Artist> Artists { get; set; }
+    
+    public DbSet<PlaybackMatch> PlaybackMatches { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {

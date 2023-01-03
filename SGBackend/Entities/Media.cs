@@ -22,3 +22,4 @@ public class Media
 
     public List<MediaImage> Images { get; set; }
 }
+
