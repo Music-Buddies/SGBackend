@@ -19,6 +19,7 @@ public class PlaybackServiceFixture
         services.AddDbContext<SgDbContext>();
         services.AddScoped<SpotifyConnector>();
         services.AddScoped<PlaybackService>();
+        services.AddScoped<RandomizedUserService>();
         ServiceProvider = services.BuildServiceProvider();
     }
     
@@ -33,6 +34,9 @@ public class PlaybackServiceTest : IClassFixture<PlaybackServiceFixture>
     {
         _serviceProvider = fixture.ServiceProvider;
     }
+    
+    
+
 
     [Fact]
     public async Task UpdateMatches()
@@ -46,6 +50,17 @@ public class PlaybackServiceTest : IClassFixture<PlaybackServiceFixture>
         Assert.Equal(0, deletedMatches);
         var deletedMatches2 = await pbService.UpdatePlaybackMatches(user1.PlaybackSummaries, user1);
         Assert.True(deletedMatches2 != 0);
+    }
+
+    [Fact]
+    public async Task Test()
+    {
+        var db = _serviceProvider.GetService<SgDbContext>();
+        var rndUserService = _serviceProvider.GetService<RandomizedUserService>();
+
+        var rndUsers = await rndUserService.GenerateXRandomUsersAndCalc(5);
+        
+        // validate calculation
     }
 
     [Fact]

@@ -26,6 +26,7 @@ public class Startup
         services.AddScoped<SpotifyConnector>();
         services.AddSingleton<TokenProvider>();
         services.AddScoped<PlaybackService>();
+        services.AddScoped<RandomizedUserService>();
 
         services.AddDatabaseDeveloperPageExceptionFilter();
 
@@ -115,6 +116,15 @@ public class Startup
 
     public void Configure(WebApplication app)
     {
+        // create db if not already
+        using (var scope = app.Services.CreateScope())
+        {
+            var services = scope.ServiceProvider;
+
+            var context = services.GetRequiredService<SgDbContext>();
+            context.Database.EnsureCreated();
+        }
+
         // Configure the HTTP request pipeline.
         if (app.Environment.IsDevelopment())
         {
@@ -128,16 +138,16 @@ public class Startup
                 context.Request.Host = new HostString("localhost:5173");
                 await next();
             });
+            
+            using (var scope = app.Services.CreateScope())
+            {
+                var services = scope.ServiceProvider;
+
+                var context = services.GetRequiredService<RandomizedUserService>();
+                context.GenerateXRandomUsersAndCalc(5).Wait();
+            }
         }
-
-        using (var scope = app.Services.CreateScope())
-        {
-            var services = scope.ServiceProvider;
-
-            var context = services.GetRequiredService<SgDbContext>();
-            context.Database.EnsureCreated();
-        }
-
+        
         app.UseAuthentication();
         app.UseAuthorization();
 
