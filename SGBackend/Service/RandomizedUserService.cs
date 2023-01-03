@@ -53,13 +53,15 @@ public class RandomizedUserService
         {
             Name = RandomString(10),
             SpotifyId = RandomString(10),
-            SpotifyProfileUrl = RandomString(10),
+            SpotifyProfileUrl = "https://miro.medium.com/max/659/1*8xraf6eyaXh-myNXOXkqLA.jpeg",
             SpotifyRefreshToken = RandomString(10)
         };
     }
 
     public async Task<List<User>> GenerateXRandomUsersAndCalc(int usersToGenerate)
     {
+        var newRecords = new List<PlaybackRecord>();
+        
         var users = new List<User>();
         foreach (var i in Enumerable.Range(0,usersToGenerate))
         {
@@ -67,12 +69,17 @@ public class RandomizedUserService
             users.Add(dummyUser);
             _dbContext.Add(dummyUser);
             await _dbContext.SaveChangesAsync();
-
-            var history = GetRandomizedHistory();
-            var records =  await _playbackService.InsertNewRecords(dummyUser, history);
-            var summaries = await _playbackService.UpsertPlaybackSummary(dummyUser, records);
-            await _playbackService.UpdatePlaybackMatches(summaries, dummyUser);
         }
+        
+        foreach (var user in users)
+        {
+            var history = GetRandomizedHistory();
+            var records =  await _playbackService.InsertNewRecords(user, history);
+            newRecords.AddRange(records);
+        }
+        
+        var summaries = await _playbackService.UpsertPlaybackSummary(newRecords);
+        await _playbackService.UpdatePlaybackMatches(summaries);
 
         return users;
     }

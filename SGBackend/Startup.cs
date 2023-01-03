@@ -78,9 +78,9 @@ public class Startup
                     var newInsertedRecords = await playbackService.InsertNewRecords(dbUser,
                         await spotifyConnector.FetchAvailableContentHistory(context.AccessToken));
 
-                    var upsertedSummaries = await playbackService.UpsertPlaybackSummary(dbUser, newInsertedRecords);
+                    var upsertedSummaries = await playbackService.UpsertPlaybackSummary(newInsertedRecords);
 
-                    await playbackService.UpdatePlaybackMatches(upsertedSummaries, dbUser);
+                    await playbackService.UpdatePlaybackMatches(upsertedSummaries);
                 }
             };
         });

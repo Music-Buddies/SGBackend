@@ -51,81 +51,90 @@ public class PlaybackService
         return records;
     }
 
-    public async Task<List<PlaybackSummary>> UpsertPlaybackSummary(User user, List<PlaybackRecord> newInsertedRecords)
+    public async Task<List<PlaybackSummary>> UpsertPlaybackSummary(List<PlaybackRecord> newInsertedRecords)
     {
-        var existingSummaries = user.PlaybackSummaries;
         var insertedOrUpdatedSummaries = new List<PlaybackSummary>();
 
-        foreach (var newInsertedRecordGrouping in newInsertedRecords.GroupBy(record => record.Media))
+        foreach (var newRecordsForUser in newInsertedRecords.GroupBy(record => record.User))
         {
-            var existingSummary = existingSummaries.FirstOrDefault(s => s.Media == newInsertedRecordGrouping.Key);
-            if (existingSummary != null)
+            var user = newRecordsForUser.Key;
+            foreach (var newInsertedRecordGrouping in newRecordsForUser.GroupBy(record => record.Media))
             {
-                // add sum of records on top and update last record timestamp
-                existingSummary.TotalSeconds += newInsertedRecordGrouping.Sum(r => r.PlayedSeconds);
-                existingSummary.lastListened = newInsertedRecords.MaxBy(r => r.PlayedAt).PlayedAt;
-                insertedOrUpdatedSummaries.Add(existingSummary);
-            }
-            else
-            {
-                var newSummary = new PlaybackSummary()
+                var existingSummary = user.PlaybackSummaries.FirstOrDefault(s => s.Media == newInsertedRecordGrouping.Key);
+                if (existingSummary != null)
                 {
-                    User = user,
-                    Media = newInsertedRecordGrouping.Key,
-                    lastListened = newInsertedRecords.MaxBy(r => r.PlayedAt).PlayedAt,
-                    TotalSeconds = newInsertedRecordGrouping.Sum(r => r.PlayedSeconds)
-                };
-                // just dump new entry
-                _dbContext.PlaybackSummaries.Add(newSummary);
-                insertedOrUpdatedSummaries.Add(newSummary);
+                    // add sum of records on top and update last record timestamp
+                    existingSummary.TotalSeconds += newInsertedRecordGrouping.Sum(r => r.PlayedSeconds);
+                    existingSummary.lastListened = newInsertedRecordGrouping.MaxBy(r => r.PlayedAt).PlayedAt;
+                    insertedOrUpdatedSummaries.Add(existingSummary);
+                }
+                else
+                {
+                    var newSummary = new PlaybackSummary()
+                    {
+                        User = user,
+                        Media = newInsertedRecordGrouping.Key,
+                        lastListened = newInsertedRecordGrouping.MaxBy(r => r.PlayedAt).PlayedAt,
+                        TotalSeconds = newInsertedRecordGrouping.Sum(r => r.PlayedSeconds)
+                    };
+                    // just dump new entry
+                    _dbContext.PlaybackSummaries.Add(newSummary);
+                    insertedOrUpdatedSummaries.Add(newSummary);
+                }
             }
         }
+        
         await _dbContext.SaveChangesAsync();
         return insertedOrUpdatedSummaries;
     }
 
-    public async Task<long> UpdatePlaybackMatches(List<PlaybackSummary> newInsertedSummaries, User user)
+    public async Task UpdatePlaybackMatches(List<PlaybackSummary> newInsertedSummaries)
     {
         var affectedMedia = newInsertedSummaries.Select(ps => ps.Media).ToArray();
         
         // get other summaries of same media type
-        var existingSummariesOfSameMedia = await _dbContext.PlaybackSummaries.Include(ps => ps.User)
+        var affectedExistingSummaries = await _dbContext.PlaybackSummaries.Include(ps => ps.User)
             .Include(ps => ps.Media)
             .Where(ps => affectedMedia.Contains(ps.Media)).ToArrayAsync();
-        existingSummariesOfSameMedia = existingSummariesOfSameMedia.Except(newInsertedSummaries).ToArray();
-
-        var otherUsers = existingSummariesOfSameMedia.Select(s => s.User).Distinct().ToArray();
-
-        var playBackMatches = new List<PlaybackMatch>();
+      
+        var allMatches = await _dbContext.PlaybackMatches.ToArrayAsync();
+        var matchesToDelete = new List<PlaybackMatch>();
+        var newPlayBackMatches = new List<PlaybackMatch>();
         
-        foreach (var newInsertedSummary in newInsertedSummaries)
+        foreach (var newSummariesUser in newInsertedSummaries.GroupBy(s => s.User))
         {
-            var otherSummaries = existingSummariesOfSameMedia.Where(s => s.Media == newInsertedSummary.Media).ToArray();
+            var user = newSummariesUser.Key;
+            var affectedMediaUser = newSummariesUser.Select(s => s.Media).ToArray();
 
-            foreach (var otherSummary in otherSummaries)
+            var otherAffectedSummaries = affectedExistingSummaries.Except(newSummariesUser).ToArray();
+            var relevantOtherSummaries = otherAffectedSummaries.Where(os => affectedMediaUser.Contains(os.Media)).ToArray();
+            
+            var otherUsers = relevantOtherSummaries.Select(s => s.User).Distinct().ToArray();
+            
+            foreach (var playbackSummary in newSummariesUser)
             {
-                // create playbackmatches
-                playBackMatches.Add(new PlaybackMatch()
+                var relevantOtherSummariesForMedia = relevantOtherSummaries.Where(s => s.Media == playbackSummary.Media).ToArray();
+                foreach (var otherSummary in relevantOtherSummariesForMedia)
                 {
-                    User1 = user,
-                    User2 = otherSummary.User,
-                    Media = newInsertedSummary.Media,
-                    listenedTogetherSeconds = Math.Min(newInsertedSummary.TotalSeconds, otherSummary.TotalSeconds),
-                });
+                    // create playbackmatches
+                    newPlayBackMatches.Add(new PlaybackMatch()
+                    {
+                        User1 = user,
+                        User2 = otherSummary.User,
+                        Media = playbackSummary.Media,
+                        listenedTogetherSeconds = Math.Min(playbackSummary.TotalSeconds, otherSummary.TotalSeconds),
+                    });
+                }
             }
+            // just delete existing playback matches
+            matchesToDelete.AddRange(allMatches.Where(pm => (pm.User1 == user && otherUsers.Contains(pm.User2))
+                                                         || (pm.User2 == user && otherUsers.Contains(pm.User1))).ToArray());
         }
         
-        // just delete existing playback matches
-        var matchesToDelete = await _dbContext.PlaybackMatches.Where(pm => (pm.User1 == user && otherUsers.Contains(pm.User2))
-                                               || (pm.User2 == user && otherUsers.Contains(pm.User1))).ToArrayAsync();
-
+        // delete old and add new
         _dbContext.PlaybackMatches.RemoveRange(matchesToDelete);
-        
-        // add new
-        _dbContext.PlaybackMatches.AddRange(playBackMatches);
+        _dbContext.PlaybackMatches.AddRange(newPlayBackMatches);
         await _dbContext.SaveChangesAsync();
-
-        return matchesToDelete.Length;
 
     }
 }
