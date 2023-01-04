@@ -1,4 +1,5 @@
 using SGBackend.Controllers;
+using SGBackend.Entities;
 
 namespace SGBackend.Models;
 
@@ -13,6 +14,8 @@ public class PlaybackSummary
     public long TotalSeconds { get; set; }
     
     public DateTime lastListened { get; set; }
+
+    public List<ListenedTogetherRecord> ListenedTogetherRecords { get; set; } = new List<ListenedTogetherRecord>();
 
     public MediaSummary ToMediaSummary()
     {

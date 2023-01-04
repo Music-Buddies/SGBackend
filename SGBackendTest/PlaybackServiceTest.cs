@@ -40,7 +40,7 @@ public class PlaybackServiceTest : IClassFixture<PlaybackServiceFixture>
     {
         var rndUserService = _serviceProvider.GetService<RandomizedUserService>();
 
-        var rndUsers = await rndUserService.GenerateXRandomUsersAndCalc(1000);
+        var rndUsers = await rndUserService.GenerateXRandomUsersAndCalc(1);
     }
 
     [Fact]

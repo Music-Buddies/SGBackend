@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using SGBackend.Entities;
 using SGBackend.Models;
 using Image = SGBackend.Connector.Image;
 
@@ -19,6 +20,9 @@ public class SgDbContext : DbContext
     public DbSet<Artist> Artists { get; set; }
     
     public DbSet<PlaybackMatch> PlaybackMatches { get; set; }
+    
+    
+    public DbSet<ListenedTogetherRecord> ListenedTogetherRecords { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {

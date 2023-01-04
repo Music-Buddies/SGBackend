@@ -79,7 +79,10 @@ public class RandomizedUserService
         }
         
         var summaries = await _playbackService.UpsertPlaybackSummary(newRecords);
-        await _playbackService.UpdatePlaybackMatches(summaries);
+
+        var ltrs = await _playbackService.ProcessUpsertedSummaries(summaries);
+        
+        //await _playbackService.UpdatePlaybackMatches(summaries);
 
         return users;
     }
