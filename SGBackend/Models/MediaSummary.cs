@@ -16,4 +16,8 @@ public class MediaSummary
     public MediumImage[] albumImages { get; set; }
     
     public string linkToMedia { get; set; }
+    
+    public string albumName { get; set; }
+    
+    public string releaseDate { get; set; }
 }

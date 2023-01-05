@@ -13,6 +13,7 @@ public class MutualPlaybackOverview : BaseEntity
     
     public User GetOtherUser(User user)
     {
-        return User1 == user ? User2 : User1;
+        var returnUser = User1 == user ? User2 : User1;
+        return returnUser;
     }
 }

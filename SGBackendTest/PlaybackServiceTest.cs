@@ -20,6 +20,10 @@ public class PlaybackServiceFixture
         services.AddScoped<SpotifyConnector>();
         services.AddScoped<PlaybackService>();
         services.AddScoped<RandomizedUserService>();
+        services.AddScoped<UserService>();
+ 
+        services.AddSingleton<PlaybackSummaryProcessor>();
+        
         ServiceProvider = services.BuildServiceProvider();
     }
     
@@ -34,15 +38,28 @@ public class PlaybackServiceTest : IClassFixture<PlaybackServiceFixture>
     {
         _serviceProvider = fixture.ServiceProvider;
     }
+
+
+    [Fact]
+    public async Task TestQueue()
+    { 
+        var rndUserService = _serviceProvider.GetService<RandomizedUserService>();
+        var processor = _serviceProvider.GetService<PlaybackSummaryProcessor>();
+        await rndUserService.CreateRandomUntilSummariesAndEnque();
+        await rndUserService.CreateRandomUntilSummariesAndEnque();
+        
+        await processor.ProcessSummary();
+        await processor.ProcessSummary();
+    }
     
     [Fact]
     public async Task TestPerformance()
     {
         var rndUserService = _serviceProvider.GetService<RandomizedUserService>();
 
-        var rndUsers = await rndUserService.GenerateXRandomUsersAndCalc(10);
+        var rndUsers = await rndUserService.GenerateXRandomUsersAndCalc(1);
     }
-
+    
     [Fact]
     public async Task Test()
     {

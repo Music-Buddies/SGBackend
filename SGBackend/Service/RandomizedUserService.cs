@@ -15,13 +15,19 @@ public class RandomizedUserService
     private readonly PlaybackService _playbackService;
 
     private readonly SgDbContext _dbContext;
+
+    private readonly UserService _userService;
     
     private static Random rnd = new Random();
 
-    public RandomizedUserService(PlaybackService playbackService, SgDbContext dbContext)
+    private readonly PlaybackSummaryProcessor _summaryProcessor;
+
+    public RandomizedUserService(PlaybackService playbackService, SgDbContext dbContext, PlaybackSummaryProcessor summaryProcessor, UserService userService)
     {
         _playbackService = playbackService;
         _dbContext = dbContext;
+        _summaryProcessor = summaryProcessor;
+        _userService = userService;
     }
 
     public static string RandomString(int length)
@@ -66,25 +72,11 @@ public class RandomizedUserService
 
     public async Task<List<User>> GenerateXRandomUsersAndCalc(int usersToGenerate)
     {
-        var existingUsers = await _dbContext.User.ToListAsync();
         var users = new List<User>();
         foreach (var i in Enumerable.Range(0,usersToGenerate))
         {
-            
-            var dummyUser = GetRandomizedDummyUser();
+            var dummyUser = await _userService.AddUser(GetRandomizedDummyUser());;
             users.Add(dummyUser);
-            _dbContext.Add(dummyUser);
-            
-            // also fetch all other users and precreate listenedTogetherSummaries
-            foreach (var existingUser in existingUsers)
-            {
-                _dbContext.MutualPlaybackOverviews.Add(new MutualPlaybackOverview()
-                {
-                    User1 = dummyUser,
-                    User2 = existingUser,
-                });
-            }
-            existingUsers.Add(dummyUser);
         }
         await _dbContext.SaveChangesAsync();
 
@@ -103,5 +95,17 @@ public class RandomizedUserService
         }
 
         return users;
+    }
+
+    public async Task CreateRandomUntilSummariesAndEnque()
+    {
+        var dummyUser = await _userService.AddUser(GetRandomizedDummyUser());;
+        
+        var records = await _playbackService.InsertNewRecords(dummyUser, GetRandomizedHistory());
+        
+        var summaries = await _playbackService.UpsertPlaybackSummary(records);
+        
+        await _summaryProcessor.Enqueue(summaries);
+        
     }
 }

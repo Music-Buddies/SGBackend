@@ -8,7 +8,7 @@ public class PlaybackSummary : BaseUserEntity
 {
     public Medium Medium { get; set; }
     
-    public long TotalSeconds { get; set; }
+    public int TotalSeconds { get; set; }
     
     public DateTime LastListened { get; set; }
     
@@ -24,7 +24,9 @@ public class PlaybackSummary : BaseUserEntity
             explicitFlag = Medium.ExplicitContent,
             listenedSeconds = TotalSeconds,
             songTitle = Medium.Title,
-            linkToMedia = Medium.LinkToMedium
+            linkToMedia = Medium.LinkToMedium,
+            albumName = Medium.AlbumName,
+            releaseDate = Medium.ReleaseDate
         };
     }
 }

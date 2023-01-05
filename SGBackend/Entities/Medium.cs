@@ -20,5 +20,9 @@ public class Medium : BaseEntity
     public List<Artist> Artists { get; set; }
 
     public List<MediumImage> Images { get; set; }
+    
+    public string AlbumName { get; set; }
+    
+    public string ReleaseDate { get; set; }
 }
 

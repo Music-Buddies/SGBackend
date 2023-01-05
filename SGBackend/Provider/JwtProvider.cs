@@ -6,16 +6,16 @@ using SGBackend.Models;
 
 namespace SGBackend.Provider;
 
-public class TokenProvider
+public class JwtProvider
 {
     private readonly ISecretsProvider _secretsProvider;
 
-    public TokenProvider(ISecretsProvider secretsProvider)
+    public JwtProvider(ISecretsProvider secretsProvider)
     {
         _secretsProvider = secretsProvider;
     }
 
-    public string GetJwt(User dbUser, Claim[]? additionalClaims)
+    public string GetJwt(User dbUser, Claim[]? additionalClaims = null)
     {
         // issue token with user id
         var key = Encoding.UTF8.GetBytes(_secretsProvider.GetSecret("jwt-key"));

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using SGBackend.Entities;
 using SGBackend.Models;
 using Image = SGBackend.Connector.Image;
@@ -30,6 +31,7 @@ public class SgDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelbuilder)
     {
+        
         base.OnModelCreating(modelbuilder);
     }
 }

@@ -10,5 +10,5 @@ public class PlaybackRecord : BaseUserEntity
 
     public DateTime PlayedAt { get; set; }
     
-    public long PlayedSeconds { get; set; }
+    public int PlayedSeconds { get; set; }
 }

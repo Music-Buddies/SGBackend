@@ -1,8 +1,10 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication.OAuth;
 using Microsoft.EntityFrameworkCore;
+using Quartz;
 using SGBackend.Entities;
 using SGBackend.Models;
+using SGBackend.Provider;
 using SGBackend.Service;
 
 namespace SGBackend.Connector;
@@ -19,16 +21,22 @@ public class SpotifyConnector : IContentConnector
 
     private readonly UserService _userService;
 
-    public SpotifyConnector(ISpotifyApi spotifyApi, ISpotifyAuthApi spotifyAuthApi, SgDbContext dbContext, ILogger<SpotifyConnector> logger, UserService userService)
+    private readonly ISchedulerFactory _schedulerFactory;
+    
+    private readonly AccessTokenProvider _tokenProvider;
+
+    public SpotifyConnector(ISpotifyApi spotifyApi, ISpotifyAuthApi spotifyAuthApi, SgDbContext dbContext, ILogger<SpotifyConnector> logger, UserService userService,  AccessTokenProvider tokenProvider, ISchedulerFactory schedulerFactory)
     {
         _spotifyApi = spotifyApi;
         _spotifyAuthApi = spotifyAuthApi;
         _dbContext = dbContext;
         _logger = logger;
         _userService = userService;
+        _tokenProvider = tokenProvider;
+        _schedulerFactory = schedulerFactory;
     }
 
-    public async Task<string> GetAccessTokenUsingRefreshToken(User dbUser)
+    public async Task<TokenResponse> GetAccessTokenUsingRefreshToken(User dbUser)
     {
         var token = await _spotifyAuthApi.GetTokenFromRefreshToken(new Dictionary<string, object>()
         {
@@ -36,10 +44,10 @@ public class SpotifyConnector : IContentConnector
             { "refresh_token", dbUser.SpotifyRefreshToken }
         });
 
-        return token.access_token;
+        return token;
     }
     
-    public async Task<User> HandleUserLoggedIn(OAuthCreatingTicketContext context)
+    public async Task<UserLoggedInResult> HandleUserLoggedIn(OAuthCreatingTicketContext context)
     {
         var claimsIdentity = context.Identity;
         _logger.LogInformation(string.Join(", ", claimsIdentity.Claims.Select(claim => claim.ToString())));
@@ -50,6 +58,7 @@ public class SpotifyConnector : IContentConnector
             var dbUser = await _dbContext.User
                 .Include(u => u.PlaybackRecords)
                 .FirstOrDefaultAsync(user => user.SpotifyId == spotifyUserUrl.Value);
+            var userExistedPreviously = dbUser != null;
             if (dbUser == null)
             {
                 var nameClaim = claimsIdentity.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name");
@@ -64,6 +73,19 @@ public class SpotifyConnector : IContentConnector
                         ? profileUrl.Value
                         : "https://miro.medium.com/max/659/1*8xraf6eyaXh-myNXOXkqLA.jpeg"
                 });
+                
+                // schedule continuous spotify fetch job
+                var job = JobBuilder.Create<SpotifyContinuousFetchJob>()
+                    .UsingJobData("userId", dbUser.Id)
+                    .UsingJobData("isInitialJob", true)
+                    .Build();
+        
+                var trigger = TriggerBuilder.Create()
+                    .StartNow()
+                    .Build();
+                
+                var scheduler = await _schedulerFactory.GetScheduler();
+                await scheduler.ScheduleJob(job, trigger);
             }
             else
             {
@@ -71,15 +93,19 @@ public class SpotifyConnector : IContentConnector
                 dbUser.SpotifyRefreshToken = context.RefreshToken;
                 await _dbContext.SaveChangesAsync();
             }
-            return dbUser;
+            return new UserLoggedInResult()
+            {
+                User = dbUser,
+                ExistedPreviously = userExistedPreviously
+            };
         }
 
         throw new Exception("could not find user url in claims from spotify");
     }
 
-    public async Task<SpotifyListenHistory> FetchAvailableContentHistory(string accessToken)
+    public async Task<SpotifyListenHistory> FetchAvailableContentHistory(User user)
     {
-        var history = await _spotifyApi.GetEntireAvailableHistory("Bearer " + accessToken);
+        var history = await _spotifyApi.GetEntireAvailableHistory("Bearer " + await _tokenProvider.GetAccessToken(user));
         return history;
     }
     

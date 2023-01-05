@@ -36,7 +36,9 @@ public class SpotifyListenHistory
                 height = i.height,
                 imageUrl= i.url,
                 width = i.width
-            }).ToList()
+            }).ToList(),
+            AlbumName = item.track.album.name,
+            ReleaseDate = item.track.album.release_date
         }).ToHashSet();
     }
 

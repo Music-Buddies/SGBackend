@@ -1,5 +1,7 @@
+using System.Collections.Specialized;
 using System.Security.Claims;
 using System.Text;
+using Hangfire;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -8,6 +10,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Quartz;
+using Quartz.Spi;
 using SGBackend.Connector;
 using SGBackend.Controllers;
 using SGBackend.Provider;
@@ -24,17 +28,38 @@ public class Startup
         services.AddDbContext<SgDbContext>();
         services.AddSingleton<ISecretsProvider, LocalSecretsProvider>();
         services.AddScoped<SpotifyConnector>();
-        services.AddSingleton<TokenProvider>();
+        services.AddSingleton<JwtProvider>();
         services.AddScoped<PlaybackService>();
         services.AddScoped<RandomizedUserService>();
+        services.AddScoped<UserService>();
+        services.AddSingleton<AccessTokenProvider>();
+
+        // register playbacksummaryprocessor and make it gettable
+        services.AddSingleton<PlaybackSummaryProcessor>();
+        services.AddHostedService(p => p.GetRequiredService<PlaybackSummaryProcessor>());
 
         services.AddDatabaseDeveloperPageExceptionFilter();
 
         services.AddControllers();
 
+        services.AddQuartz(q =>
+        {
+            q.UseMicrosoftDependencyInjectionJobFactory();
+            q.UsePersistentStore(o =>
+            {
+                o.UseMySql("server=localhost;database=sg;user=root;password=root");
+                o.UseJsonSerializer();
+            });
+        });
+
+        services.AddQuartzHostedService(o =>
+        {
+            o.WaitForJobsToComplete = true;
+        });
+
         // configure jwt validation using tokenprovider
         services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
-            .Configure<TokenProvider>((options, provider) => options.TokenValidationParameters = provider.GetJwtValidationParameters());
+            .Configure<JwtProvider>((options, provider) => options.TokenValidationParameters = provider.GetJwtValidationParameters());
 
         services.AddAuthentication(options =>
         {
@@ -59,29 +84,39 @@ public class Startup
                 {
                     // this means the user logged in successfully at spotify
                     var spotifyConnector = context.HttpContext.RequestServices.GetRequiredService<SpotifyConnector>();
-                    var tokenProvider = context.HttpContext.RequestServices.GetRequiredService<TokenProvider>();
+                    var tokenProvider = context.HttpContext.RequestServices.GetRequiredService<JwtProvider>();
+                    var accessTokenProvider = context.HttpContext.RequestServices.GetRequiredService<AccessTokenProvider>();
 
-                    var dbUser = await spotifyConnector.HandleUserLoggedIn(context);
+                    var handleResult = await spotifyConnector.HandleUserLoggedIn(context);
+                    var dbUser = handleResult.User;
+                    
+                    if (context.AccessToken != null && context.ExpiresIn.HasValue)
+                    {
+                        accessTokenProvider.InsertAccessToken(dbUser, new AccessToken()
+                        {
+                            Fetched = DateTime.Now,
+                            Token = context.AccessToken,
+                            ExpiresIn = context.ExpiresIn.Value 
+                        });
+                    }
                     
                     // write spotify access token to jwt
-                    context.Response.Cookies.Append("jwt", tokenProvider.GetJwt(dbUser, new[]
-                    {
-                        new Claim("spotify-token", context.AccessToken!)
-                    }));
+                    context.Response.Cookies.Append("jwt", tokenProvider.GetJwt(dbUser));
                     
                     // cookie is still signed in but its irrelevant since we are using
                     // jwt scheme for auth
-                    
-                    // TODO: move in quartz logic, only for dev now
-                    var playbackService = context.HttpContext.RequestServices.GetRequiredService<PlaybackService>();
 
-                    var newInsertedRecords = await playbackService.InsertNewRecords(dbUser,
-                        await spotifyConnector.FetchAvailableContentHistory(context.AccessToken));
+                    if (!handleResult.ExistedPreviously)
+                    {
+                        var playbackService = context.HttpContext.RequestServices.GetRequiredService<PlaybackService>();
 
-                    var upsertedSummaries = await playbackService.UpsertPlaybackSummary(newInsertedRecords);
+                        var newInsertedRecords = await playbackService.InsertNewRecords(dbUser,
+                            await spotifyConnector.FetchAvailableContentHistory(dbUser));
 
-                    if(upsertedSummaries.Any()) await playbackService.UpdateMutualPlaybackOverviews(upsertedSummaries);
+                        var upsertedSummaries = await playbackService.UpsertPlaybackSummary(newInsertedRecords);
 
+                        if(upsertedSummaries.Any()) await playbackService.UpdateMutualPlaybackOverviews(upsertedSummaries);
+                    }
                 }
             };
         });
@@ -115,7 +150,7 @@ public class Startup
         });
     }
 
-    public void Configure(WebApplication app)
+    public async Task Configure(WebApplication app)
     {
         // create db if not already
         using (var scope = app.Services.CreateScope())
@@ -123,7 +158,13 @@ public class Startup
             var services = scope.ServiceProvider;
 
             var context = services.GetRequiredService<SgDbContext>();
-            context.Database.EnsureCreated();
+            var created = context.Database.EnsureCreated();
+            
+            if (created)
+            {
+                var quartzTables = File.ReadAllText("generateQuartzTables.sql");
+                await context.Database.ExecuteSqlRawAsync(quartzTables);
+            }
         }
 
         // Configure the HTTP request pipeline.
@@ -153,7 +194,8 @@ public class Startup
         app.UseAuthorization();
 
         app.MapControllers();
-
+        
+        
         app.Run();
     }
 }

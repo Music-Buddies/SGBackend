@@ -37,7 +37,7 @@ public class SpotifyConnectorTest : IClassFixture<SpotifyConnectorFixture>
 
         var token = await connector.GetAccessTokenUsingRefreshToken(user);
 
-        await connector.FetchAvailableContentHistory(token);
+        await connector.FetchAvailableContentHistory(user);
     }
 
 }

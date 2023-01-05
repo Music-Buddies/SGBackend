@@ -149,17 +149,29 @@ public class PlaybackService
             throw new Exception("summaries of multiple users provided");
         }
 
+        if (user == null)
+        {
+            throw new Exception("user must be included");
+        }
+
         var affectedMedia = upsertedSummaries.Select(s => s.Medium).Distinct().ToArray();
 
         var otherPlaybackSummaries =
-            await _dbContext.PlaybackSummaries.Where(ps => affectedMedia.Contains(ps.Medium)).ToListAsync();
-        var otherSummariesByMedia = otherPlaybackSummaries.Except(upsertedSummaries).GroupBy(ps => ps.Medium).ToDictionary(g => g.Key, g => g.ToList());
+            await _dbContext.PlaybackSummaries
+                .Include(ps => ps.Medium)
+                .Include(ps => ps.User)
+                .Where(ps => affectedMedia.Contains(ps.Medium) && ps.User != user).ToListAsync();
+        
+        var otherSummariesByMedia = otherPlaybackSummaries.Except(upsertedSummaries).GroupBy(ps => ps.Medium)
+            .ToDictionary(g => g.Key, g => g.ToList());
         
         var playbackOverviews = await _dbContext.MutualPlaybackOverviews
             .Include(lts => lts.MutualPlaybackEntries)
             .ThenInclude(lte => lte.Medium)
+            .Include(lts => lts.User1)
+            .Include(lts => lts.User2)
             .Where(lts => lts.User1 == user || lts.User2 == user).ToArrayAsync();
-
+        
         var overviewsByOtherUser =
             playbackOverviews.ToDictionary(lts => lts.GetOtherUser(user), summary => summary);
         
@@ -172,7 +184,7 @@ public class PlaybackService
             foreach (var otherSummary in otherSummaries)
             {
                 var playbackOverview = overviewsByOtherUser[otherSummary.User];
-
+                
                 var mutualPlaybackEntry = playbackOverview.MutualPlaybackEntries
                     .FirstOrDefault(e => e.Medium == otherSummary.Medium);
 
