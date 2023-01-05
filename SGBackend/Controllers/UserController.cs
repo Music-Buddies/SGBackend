@@ -39,8 +39,8 @@ public class UserController : ControllerBase
         var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
         
         var dbUser = await _dbContext.User
-            .Include(u => u.PlaybackSummaries).ThenInclude(ps => ps.Media).ThenInclude(m => m.Artists)
-            .Include(u => u.PlaybackSummaries).ThenInclude(ps => ps.Media).ThenInclude(m => m.Images)
+            .Include(u => u.PlaybackSummaries).ThenInclude(ps => ps.Medium).ThenInclude(m => m.Artists)
+            .Include(u => u.PlaybackSummaries).ThenInclude(ps => ps.Medium).ThenInclude(m => m.Images)
             .FirstAsync(u => u.Id == userId);
 
         return dbUser.PlaybackSummaries.Select(ps => ps.ToMediaSummary()).OrderByDescending(ms => ms.listenedSeconds).ToArray();
@@ -53,11 +53,9 @@ public class UserController : ControllerBase
         var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
         var dbUser = await _dbContext.User.FirstAsync(u => u.Id == userId);
 
-        var matches = await _dbContext.PlaybackMatches
+        var matches = await _dbContext.MutualPlaybackOverviews
             .Include(m => m.User1)
             .Include(m => m.User2)
-            .Include(m => m.Media.Artists)
-            .Include(m => m.Media.Images)
             .Where(m => m.User1 == dbUser || m.User2 == dbUser).ToArrayAsync();
         
         return matches.GroupBy(m => m.GetOtherUser(dbUser)).Select(m => new Match()
@@ -65,7 +63,7 @@ public class UserController : ControllerBase
             username = m.Key.Name,
             userId = m.Key.Id.ToString(),
             profileUrl = m.Key.SpotifyProfileUrl,
-            listenedTogetherSeconds = m.Sum(matches => matches.listenedTogetherSeconds)
+            listenedTogetherSeconds = m.Sum(o => o.TotalSeconds)
         }).OrderByDescending(m => m.listenedTogetherSeconds).ToArray();
     }
 
@@ -76,12 +74,12 @@ public class UserController : ControllerBase
         var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
         var guidRequested = Guid.Parse(guid);
         
-        var loggedInUser = await _dbContext.User.Include(u => u.PlaybackSummaries).ThenInclude(ps => ps.Media).FirstAsync(u => u.Id == userId);
-        var knownMedia = loggedInUser.PlaybackSummaries.Select(ps => ps.Media).ToHashSet();
+        var loggedInUser = await _dbContext.User.Include(u => u.PlaybackSummaries).ThenInclude(ps => ps.Medium).FirstAsync(u => u.Id == userId);
+        var knownMedia = loggedInUser.PlaybackSummaries.Select(ps => ps.Medium).ToHashSet();
         
-        var requestedUser =  await _dbContext.User.Include(u => u.PlaybackSummaries).ThenInclude(ps => ps.Media).FirstAsync(u => u.Id == guidRequested);
+        var requestedUser =  await _dbContext.User.Include(u => u.PlaybackSummaries).ThenInclude(ps => ps.Medium).FirstAsync(u => u.Id == guidRequested);
         
-        return requestedUser.PlaybackSummaries.Where(ps => !knownMedia.Contains(ps.Media))
+        return requestedUser.PlaybackSummaries.Where(ps => !knownMedia.Contains(ps.Medium))
             .Select(ps => ps.ToMediaSummary()).OrderByDescending(ms => ms.listenedSeconds).ToArray();
     }
 }

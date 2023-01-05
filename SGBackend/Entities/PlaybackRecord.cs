@@ -1,13 +1,13 @@
+using SGBackend.Entities;
+
 namespace SGBackend.Models;
 
-public class PlaybackRecord
+
+// defines a singular record of a medium being played
+public class PlaybackRecord : BaseUserEntity
 {
-    public Guid Id { get; set; }
-    
-    public Media Media { get; set; }
-    
-    public User User { get; set; }
-    
+    public Medium Medium { get; set; }
+
     public DateTime PlayedAt { get; set; }
     
     public long PlayedSeconds { get; set; }

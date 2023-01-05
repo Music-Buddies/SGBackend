@@ -14,14 +14,14 @@ public class PlaybackService
         _dbContext = dbContext;
     }
 
-    public async Task InsertMissingMedia(SpotifyListenHistory spotifyListenHistory)
+    private async Task InsertMissingMedia(SpotifyListenHistory spotifyListenHistory)
     {
         var media = spotifyListenHistory.GetMedia();
         var dbExistingMedia = await _dbContext.Media.ToArrayAsync();
 
         var mediaToInsert = media.Where(media => !dbExistingMedia.Any(existingMedia =>
-            existingMedia.LinkToMedia == media.LinkToMedia
-            && existingMedia.MediaSource == media.MediaSource)).ToArray();
+            existingMedia.LinkToMedium == media.LinkToMedium
+            && existingMedia.MediumSource == media.MediumSource)).ToArray();
 
         await _dbContext.Media.AddRangeAsync(mediaToInsert);
         await _dbContext.SaveChangesAsync();
@@ -31,7 +31,7 @@ public class PlaybackService
     {
         await InsertMissingMedia(spotifyListenHistory);
         var existingSpotifyMedia =
-            await _dbContext.Media.Where(media => media.MediaSource == MediaSource.Spotify).ToArrayAsync();
+            await _dbContext.Media.Where(media => media.MediumSource == MediumSource.Spotify).ToArrayAsync();
 
         var records = spotifyListenHistory.GetPlaybackRecords(existingSpotifyMedia, user);
         
@@ -51,24 +51,35 @@ public class PlaybackService
 
         return records;
     }
-
-    private async Task<List<PlaybackSummary>> UpsertPlaybackSummaryNoSave(List<PlaybackRecord> records, User user)
+    
+    public async Task<List<PlaybackSummary>> UpsertPlaybackSummary(List<PlaybackRecord> newInsertedRecords)
     {
-        if (records.Any(r => r.User != user))
+        var insertedOrUpdatedSummaries = new List<PlaybackSummary>();
+
+        foreach (var newRecordsForUser in newInsertedRecords.GroupBy(record => record.User))
         {
-            throw new Exception("method should only be called with records of the same user");
+            insertedOrUpdatedSummaries.AddRange(await UpsertPlaybackSummaryNoSave(newRecordsForUser.ToList()));
         }
         
+        await _dbContext.SaveChangesAsync();
+        return insertedOrUpdatedSummaries;
+    }
+    
+    private async Task<List<PlaybackSummary>> UpsertPlaybackSummaryNoSave(List<PlaybackRecord> records)
+    {
+        var user = records.First().User;
+
         var upsertedSummaries = new List<PlaybackSummary>();
         
-        foreach (var newInsertedRecordGrouping in records.GroupBy(record => record.Media))
+        foreach (var newInsertedRecordGrouping in records.GroupBy(record => record.Medium))
         {
-            var existingSummary = user.PlaybackSummaries.FirstOrDefault(s => s.Media == newInsertedRecordGrouping.Key);
+            var existingSummary = user.PlaybackSummaries.FirstOrDefault(s => s.Medium == newInsertedRecordGrouping.Key);
             if (existingSummary != null)
             {
                 // add sum of records on top and update last record timestamp
                 existingSummary.TotalSeconds += newInsertedRecordGrouping.Sum(r => r.PlayedSeconds);
-                existingSummary.lastListened = newInsertedRecordGrouping.MaxBy(r => r.PlayedAt).PlayedAt;
+                existingSummary.LastListened = newInsertedRecordGrouping.MaxBy(r => r.PlayedAt).PlayedAt;
+                existingSummary.NeedsCalculation = true;
                 upsertedSummaries.Add(existingSummary);
             }
             else
@@ -76,9 +87,10 @@ public class PlaybackService
                 var newSummary = new PlaybackSummary()
                 {
                     User = user,
-                    Media = newInsertedRecordGrouping.Key,
-                    lastListened = newInsertedRecordGrouping.MaxBy(r => r.PlayedAt).PlayedAt,
-                    TotalSeconds = newInsertedRecordGrouping.Sum(r => r.PlayedSeconds)
+                    Medium = newInsertedRecordGrouping.Key,
+                    LastListened = newInsertedRecordGrouping.MaxBy(r => r.PlayedAt).PlayedAt,
+                    TotalSeconds = newInsertedRecordGrouping.Sum(r => r.PlayedSeconds),
+                    NeedsCalculation = true
                 };
                 // just dump new entry
                 _dbContext.PlaybackSummaries.Add(newSummary);
@@ -87,143 +99,67 @@ public class PlaybackService
         }
 
         return upsertedSummaries;
-
     }
     
-    public async Task<List<PlaybackSummary>> UpsertPlaybackSummary(List<PlaybackRecord> newInsertedRecords)
+    public async Task UpdateMutualPlaybackOverviews(PlaybackSummary upsertedSummary)
     {
-        var insertedOrUpdatedSummaries = new List<PlaybackSummary>();
-
-        foreach (var newRecordsForUser in newInsertedRecords.GroupBy(record => record.User))
-        {
-            var user = newRecordsForUser.Key;
-            insertedOrUpdatedSummaries.AddRange(await UpsertPlaybackSummaryNoSave(newRecordsForUser.ToList(), user));
-        }
-        
-        await _dbContext.SaveChangesAsync();
-        return insertedOrUpdatedSummaries;
+        await UpdateMutualPlaybackOverviews(new List<PlaybackSummary>() { upsertedSummary });
     }
-
-    public async Task<List<PlaybackSummary>> UpsertPlaybackSummary(List<PlaybackRecord> records, User user)
+    
+    // TODO: write so that it can take the input of multiple users at once to save performance
+    public async Task UpdateMutualPlaybackOverviews(List<PlaybackSummary> upsertedSummaries)
     {
-        var summaries = await UpsertPlaybackSummaryNoSave(records, user);
-        await _dbContext.SaveChangesAsync();
-        return summaries;
-    }
-
-    private async Task<List<ListenedTogetherRecord>> ProcessSummariesForMediaNoSave(List<PlaybackSummary> summaries, Media media)
-    {
-        if (summaries.Any(s => s.Media != media))
+        var user = upsertedSummaries.First().User;
+        if (upsertedSummaries.Any(s => s.User != user))
         {
-            throw new Exception("summaries need to be of same media");
+            throw new Exception("summaries of multiple users provided");
         }
 
-        var listenedTogetherRecords = new List<ListenedTogetherRecord>();
+        var affectedMedia = upsertedSummaries.Select(s => s.Medium).Distinct().ToArray();
+
+        var otherPlaybackSummaries =
+            await _dbContext.PlaybackSummaries.Where(ps => affectedMedia.Contains(ps.Medium)).ToListAsync();
+        var otherSummariesByMedia = otherPlaybackSummaries.Except(upsertedSummaries).GroupBy(ps => ps.Medium).ToDictionary(g => g.Key, g => g.ToList());
         
-        // compare each summary to every other summary - once per pair is enough (m/s indexes are offset so we dont compare double)
-        for (var m = 0; m < summaries.Count; m++)
+        var playbackOverviews = await _dbContext.MutualPlaybackOverviews
+            .Include(lts => lts.MutualPlaybackEntries)
+            .ThenInclude(lte => lte.Medium)
+            .Where(lts => lts.User1 == user || lts.User2 == user).ToArrayAsync();
+
+        var overviewsByOtherUser =
+            playbackOverviews.ToDictionary(lts => lts.GetOtherUser(user), summary => summary);
+        
+        foreach (var upsertedSummary in upsertedSummaries)
         {
-            var mSummary = summaries[m];
-            for (var s = m +1; s < summaries.Count; s++)
+            otherSummariesByMedia.TryGetValue(upsertedSummary.Medium, out var otherSummaries);
+            // there might just be no other summaries for this medium yet
+            if(otherSummaries == null) continue;
+            
+            foreach (var otherSummary in otherSummaries)
             {
-                var sSummary = summaries[s];
-                // update record / create new
-                var togetherRecord = mSummary.ListenedTogetherRecords.FirstOrDefault(ltr => ltr.OfUser(sSummary.User));
+                var playbackOverview = overviewsByOtherUser[otherSummary.User];
 
-                if (togetherRecord != null)
+                var mutualPlaybackEntry = playbackOverview.MutualPlaybackEntries
+                    .FirstOrDefault(e => e.Medium == otherSummary.Medium);
+
+                if (mutualPlaybackEntry != null)
                 {
-                    togetherRecord.listenedTogether = Math.Min(mSummary.TotalSeconds, sSummary.TotalSeconds);
-                    listenedTogetherRecords.Add(togetherRecord);
+                    // update seconds
+                    mutualPlaybackEntry.PlaybackSeconds = Math.Min(otherSummary.TotalSeconds, upsertedSummary.TotalSeconds);
                 }
                 else
                 {
-                    var newRecord = new ListenedTogetherRecord()
+                    // create
+                    playbackOverview.MutualPlaybackEntries.Add(new MutualPlaybackEntry()
                     {
-                        media = media,
-                        user1 = mSummary.User,
-                        user2 = sSummary.User,
-                        listenedTogether = Math.Min(mSummary.TotalSeconds, sSummary.TotalSeconds)
-                    };
-                    listenedTogetherRecords.Add(newRecord);
-                    _dbContext.ListenedTogetherRecords.Add(newRecord);
-                    
-                    
-                    sSummary.ListenedTogetherRecords.Add(newRecord);
-                    mSummary.ListenedTogetherRecords.Add(newRecord);
-                }
-            }
-        }
-
-        return listenedTogetherRecords;
-    }
-
-    public async Task<List<ListenedTogetherRecord>> ProcessUpsertedSummaries(List<PlaybackSummary> upsertedSummaries)
-    {
-        var mediaToRecalc = upsertedSummaries.Select(s => s.Media).Distinct().ToArray();
-
-        var ltrs = new List<ListenedTogetherRecord>();
-        
-        var affectedSummaries = await _dbContext.PlaybackSummaries.Include(ps => ps.User)
-            .Where(ps => mediaToRecalc.Contains(ps.Media)).ToArrayAsync();
-        
-        // compare each summary to every other summary of this media
-        foreach (var playbackSummaries in affectedSummaries.GroupBy(s => s.Media))
-        {
-            ltrs.AddRange(await ProcessSummariesForMediaNoSave(playbackSummaries.ToList(), playbackSummaries.Key));
-        }
-
-        await _dbContext.SaveChangesAsync();
-
-        return ltrs;
-    }
-
-    public async Task UpdatePlaybackMatches(List<PlaybackSummary> newInsertedSummaries)
-    {
-        var affectedMedia = newInsertedSummaries.Select(ps => ps.Media).ToArray();
-        
-        // get other summaries of same media type
-        var affectedExistingSummaries = await _dbContext.PlaybackSummaries.Include(ps => ps.User)
-            .Include(ps => ps.Media)
-            .Where(ps => affectedMedia.Contains(ps.Media)).ToArrayAsync();
-      
-        var allMatches = await _dbContext.PlaybackMatches.ToArrayAsync();
-        var matchesToDelete = new List<PlaybackMatch>();
-        var newPlayBackMatches = new List<PlaybackMatch>();
-        
-        foreach (var newSummariesUser in newInsertedSummaries.GroupBy(s => s.User))
-        {
-            var user = newSummariesUser.Key;
-            var affectedMediaUser = newSummariesUser.Select(s => s.Media).ToArray();
-
-            var otherAffectedSummaries = affectedExistingSummaries.Except(newSummariesUser).ToArray();
-            var relevantOtherSummaries = otherAffectedSummaries.Where(os => affectedMediaUser.Contains(os.Media)).ToArray();
-            
-            var otherUsers = relevantOtherSummaries.Select(s => s.User).Distinct().ToArray();
-            
-            foreach (var playbackSummary in newSummariesUser)
-            {
-                var relevantOtherSummariesForMedia = relevantOtherSummaries.Where(s => s.Media == playbackSummary.Media).ToArray();
-                foreach (var otherSummary in relevantOtherSummariesForMedia)
-                {
-                    // create playbackmatches
-                    newPlayBackMatches.Add(new PlaybackMatch()
-                    {
-                        User1 = user,
-                        User2 = otherSummary.User,
-                        Media = playbackSummary.Media,
-                        listenedTogetherSeconds = Math.Min(playbackSummary.TotalSeconds, otherSummary.TotalSeconds),
+                        Medium = upsertedSummary.Medium,
+                        PlaybackSeconds = Math.Min(otherSummary.TotalSeconds, upsertedSummary.TotalSeconds),
+                        MutualPlaybackOverview = playbackOverview
                     });
                 }
             }
-            // just delete existing playback matches
-            matchesToDelete.AddRange(allMatches.Where(pm => (pm.User1 == user && otherUsers.Contains(pm.User2))
-                                                         || (pm.User2 == user && otherUsers.Contains(pm.User1))).ToArray());
         }
-        
-        // delete old and add new
-        _dbContext.PlaybackMatches.RemoveRange(matchesToDelete);
-        _dbContext.PlaybackMatches.AddRange(newPlayBackMatches);
-        await _dbContext.SaveChangesAsync();
 
+        await _dbContext.SaveChangesAsync();
     }
 }

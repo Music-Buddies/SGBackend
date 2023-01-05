@@ -1,5 +1,7 @@
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
 using SGBackend.Connector;
+using SGBackend.Entities;
 using SGBackend.Models;
 
 namespace SGBackend.Service;
@@ -60,29 +62,45 @@ public class RandomizedUserService
 
     public async Task<List<User>> GenerateXRandomUsersAndCalc(int usersToGenerate)
     {
-        var newRecords = new List<PlaybackRecord>();
-        
+   
         var users = new List<User>();
         foreach (var i in Enumerable.Range(0,usersToGenerate))
         {
+
+            var existingUsers = await _dbContext.User.ToArrayAsync();
             var dummyUser = GetRandomizedDummyUser();
             users.Add(dummyUser);
             _dbContext.Add(dummyUser);
+            
+            // also fetch all other users and precreate listenedTogetherSummaries
+            foreach (var existingUser in existingUsers)
+            {
+                _dbContext.MutualPlaybackOverviews.Add(new MutualPlaybackOverview()
+                {
+                    User1 = dummyUser,
+                    User2 = existingUser,
+                    TotalSeconds = 0
+                });
+            }
             await _dbContext.SaveChangesAsync();
         }
+
+        var summariesByUser = new List<List<PlaybackSummary>>();
         
         foreach (var user in users)
         {
             var history = GetRandomizedHistory();
             var records =  await _playbackService.InsertNewRecords(user, history);
-            newRecords.AddRange(records);
+           
+            summariesByUser.Add(await _playbackService.UpsertPlaybackSummary(records));
         }
         
-        var summaries = await _playbackService.UpsertPlaybackSummary(newRecords);
 
-        var ltrs = await _playbackService.ProcessUpsertedSummaries(summaries);
+        foreach (var playbackSummary in summariesByUser)
+        {
+            await _playbackService.UpdateMutualPlaybackOverviews(playbackSummary);
+        }
         
-        //await _playbackService.UpdatePlaybackMatches(summaries);
 
         return users;
     }

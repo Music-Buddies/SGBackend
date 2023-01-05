@@ -1,7 +1,8 @@
+using SGBackend.Entities;
+
 namespace SGBackend.Models;
 
-public class Artist
+public class Artist : BaseEntity
 {
-    public Guid Id { get; set; }
     public string Name { get; set; }
 }

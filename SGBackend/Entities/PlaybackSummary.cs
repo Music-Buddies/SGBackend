@@ -1,32 +1,30 @@
+using System.ComponentModel.DataAnnotations;
 using SGBackend.Controllers;
 using SGBackend.Entities;
 
 namespace SGBackend.Models;
 
-public class PlaybackSummary
+public class PlaybackSummary : BaseUserEntity
 {
-    public Guid Id { get; set; }
-    
-    public User User { get; set; }
-    
-    public Media Media { get; set; }
+    public Medium Medium { get; set; }
     
     public long TotalSeconds { get; set; }
     
-    public DateTime lastListened { get; set; }
-
-    public List<ListenedTogetherRecord> ListenedTogetherRecords { get; set; } = new List<ListenedTogetherRecord>();
-
+    public DateTime LastListened { get; set; }
+    
+    // TODO: replace with queue service
+    public bool NeedsCalculation { get; set; }
+    
     public MediaSummary ToMediaSummary()
     {
         return new MediaSummary()
         {
-            albumImages = Media.Images.ToArray(),
-            allArtists = Media.Artists.Select(a => a.Name).ToArray(),
-            explicitFlag = Media.ExplicitContent,
+            albumImages = Medium.Images.ToArray(),
+            allArtists = Medium.Artists.Select(a => a.Name).ToArray(),
+            explicitFlag = Medium.ExplicitContent,
             listenedSeconds = TotalSeconds,
-            songTitle = Media.Title,
-            linkToMedia = Media.LinkToMedia
+            songTitle = Medium.Title,
+            linkToMedia = Medium.LinkToMedium
         };
     }
 }

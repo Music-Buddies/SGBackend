@@ -52,22 +52,27 @@ public class PlaybackServiceTest : IClassFixture<PlaybackServiceFixture>
         var rndUsers = await rndUserService.GenerateXRandomUsersAndCalc(5);
         
         // find matches between rndUsers 
-        var matchesBetweenRndUsers = db.PlaybackMatches.Include(m => m.Media).Where(m => rndUsers.Contains(m.User1) && rndUsers.Contains(m.User2)).ToArray();
+        var matchesBetweenRndUsers = db.MutualPlaybackOverviews.Include(m => m.MutualPlaybackEntries)
+            .ThenInclude(e => e.Medium).Where(m => rndUsers.Contains(m.User1) && rndUsers.Contains(m.User2)).ToArray();
         
         // validate them
         foreach (var matchBetweenRndUsers in matchesBetweenRndUsers)
         {
-            var media = matchBetweenRndUsers.Media;
-            var recordsUser1 =
-                db.PlaybackRecords.Where(pb => pb.User == matchBetweenRndUsers.User1 && pb.Media == media).ToArray();
-            var sumUser1 = recordsUser1.Sum(r => r.PlayedSeconds);
+            foreach (var mutualPlaybackEntry in matchBetweenRndUsers.MutualPlaybackEntries)
+            {
+                var media = mutualPlaybackEntry.Medium;
+                var recordsUser1 =
+                    db.PlaybackRecords.Where(pb => pb.User == matchBetweenRndUsers.User1 && pb.Medium == media).ToArray();
+                var sumUser1 = recordsUser1.Sum(r => r.PlayedSeconds);
             
-            var recordsUser2 = 
-                db.PlaybackRecords.Where(pb => pb.User == matchBetweenRndUsers.User2 && pb.Media == media).ToArray();
-            var sumUser2 = recordsUser2.Sum(r => r.PlayedSeconds);
+                var recordsUser2 = 
+                    db.PlaybackRecords.Where(pb => pb.User == matchBetweenRndUsers.User2 && pb.Medium == media).ToArray();
+                var sumUser2 = recordsUser2.Sum(r => r.PlayedSeconds);
 
-            var listenedTogether = Math.Min(sumUser1, sumUser2);
-            Assert.Equal(listenedTogether, matchBetweenRndUsers.listenedTogetherSeconds);
+                var listenedTogether = Math.Min(sumUser1, sumUser2);
+                Assert.Equal(listenedTogether, mutualPlaybackEntry.PlaybackSeconds);
+            }
+           
         }
     }
 }

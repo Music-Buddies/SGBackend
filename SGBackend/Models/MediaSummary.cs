@@ -13,7 +13,7 @@ public class MediaSummary
     
     public long listenedSeconds { get; set; }
     
-    public MediaImage[] albumImages { get; set; }
+    public MediumImage[] albumImages { get; set; }
     
     public string linkToMedia { get; set; }
 }

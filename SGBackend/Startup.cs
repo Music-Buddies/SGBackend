@@ -80,7 +80,8 @@ public class Startup
 
                     var upsertedSummaries = await playbackService.UpsertPlaybackSummary(newInsertedRecords);
 
-                    await playbackService.UpdatePlaybackMatches(upsertedSummaries);
+                    if(upsertedSummaries.Any()) await playbackService.UpdateMutualPlaybackOverviews(upsertedSummaries);
+
                 }
             };
         });
@@ -144,7 +145,7 @@ public class Startup
                 var services = scope.ServiceProvider;
 
                 var context = services.GetRequiredService<RandomizedUserService>();
-                //context.GenerateXRandomUsersAndCalc(5).Wait();
+                context.GenerateXRandomUsersAndCalc(5).Wait();
             }
         }
         

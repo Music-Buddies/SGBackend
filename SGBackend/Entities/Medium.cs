@@ -1,25 +1,24 @@
 using SGBackend.Controllers;
+using SGBackend.Entities;
 
 namespace SGBackend.Models;
 
-public enum MediaSource
+public enum MediumSource
 {
     Spotify
 }
-public class Media
+public class Medium : BaseEntity
 {
-    public Guid Id { get; set; }
-    
     public string Title { get; set; }
     
-    public MediaSource MediaSource { get; set; }
+    public MediumSource MediumSource { get; set; }
     
-    public string LinkToMedia { get; set; }
+    public string LinkToMedium { get; set; }
     
     public bool ExplicitContent { get; set; }
     
     public List<Artist> Artists { get; set; }
 
-    public List<MediaImage> Images { get; set; }
+    public List<MediumImage> Images { get; set; }
 }
 

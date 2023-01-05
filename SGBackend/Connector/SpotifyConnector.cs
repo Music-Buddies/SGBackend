@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication.OAuth;
 using Microsoft.EntityFrameworkCore;
+using SGBackend.Entities;
 using SGBackend.Models;
 
 namespace SGBackend.Connector;
@@ -49,6 +50,8 @@ public class SpotifyConnector : IContentConnector
             {
                 var nameClaim = claimsIdentity.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name");
                 var profileUrl = claimsIdentity.FindFirst("urn:spotify:profilepicture");
+                var allExistingUsers = await _dbContext.User.ToArrayAsync();
+                
                 // create in db
                 dbUser = new User
                 {
@@ -58,6 +61,18 @@ public class SpotifyConnector : IContentConnector
                     SpotifyProfileUrl = profileUrl != null ? profileUrl.Value : "https://miro.medium.com/max/659/1*8xraf6eyaXh-myNXOXkqLA.jpeg"
                 };
                 _dbContext.User.Add(dbUser);
+                
+                // also fetch all other users and precreate listenedTogetherSummaries
+                foreach (var existingUser in allExistingUsers)
+                {
+                    _dbContext.MutualPlaybackOverviews.Add(new MutualPlaybackOverview()
+                    {
+                        User1 = dbUser,
+                        User2 = existingUser,
+                        TotalSeconds = 0
+                    });
+                }
+                
             }
             else
             {

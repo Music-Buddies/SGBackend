@@ -12,19 +12,19 @@ public class SpotifyListenHistory
     public int limit { get; set; }
     public string href { get; set; }
 
-    public HashSet<Media> GetMedia()
+    public HashSet<Medium> GetMedia()
     {
-        return items.Select(item => new Media()
+        return items.Select(item => new Medium()
         {
             Title = item.track.name,
-            MediaSource = MediaSource.Spotify,
-            LinkToMedia = item.track.external_urls.spotify,
+            MediumSource = MediumSource.Spotify,
+            LinkToMedium = item.track.external_urls.spotify,
             ExplicitContent = item.track.@explicit,
             Artists = item.track.artists.Select(a => new SGBackend.Models.Artist()
             {
                 Name = a.name
             }).ToList(),
-            Images = item.track.album.images.Select(i => new MediaImage()
+            Images = item.track.album.images.Select(i => new MediumImage()
             {
                 height = i.height,
                 imageUrl= i.url,
@@ -33,11 +33,11 @@ public class SpotifyListenHistory
         }).ToHashSet();
     }
 
-    public List<PlaybackRecord> GetPlaybackRecords(Media[] existingMediaSpotify, User user)
+    public List<PlaybackRecord> GetPlaybackRecords(Medium[] existingMediaSpotify, User user)
     {
         return items.Select(item => new PlaybackRecord()
         {
-            Media = existingMediaSpotify.First(media => media.MediaSource == MediaSource.Spotify && media.LinkToMedia == item.track.external_urls.spotify),
+            Medium = existingMediaSpotify.First(media => media.MediumSource == MediumSource.Spotify && media.LinkToMedium == item.track.external_urls.spotify),
             PlayedAt = item.played_at,
             PlayedSeconds = item.track.duration_ms,
             User = user
