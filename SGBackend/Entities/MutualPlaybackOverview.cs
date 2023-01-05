@@ -11,8 +11,6 @@ public class MutualPlaybackOverview : BaseEntity
 
     public List<MutualPlaybackEntry> MutualPlaybackEntries { get; set; } = new();
     
-    public long TotalSeconds { get; set; }
-    
     public User GetOtherUser(User user)
     {
         return User1 == user ? User2 : User1;

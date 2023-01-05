@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.EntityFrameworkCore;
 using SGBackend.Connector;
 using SGBackend.Entities;
@@ -14,33 +15,49 @@ public class PlaybackService
         _dbContext = dbContext;
     }
 
-    private async Task InsertMissingMedia(SpotifyListenHistory spotifyListenHistory)
-    {
-        var media = spotifyListenHistory.GetMedia();
-        var dbExistingMedia = await _dbContext.Media.ToArrayAsync();
-
-        var mediaToInsert = media.Where(media => !dbExistingMedia.Any(existingMedia =>
-            existingMedia.LinkToMedium == media.LinkToMedium
-            && existingMedia.MediumSource == media.MediumSource)).ToArray();
-
-        await _dbContext.Media.AddRangeAsync(mediaToInsert);
-        await _dbContext.SaveChangesAsync();
-    }
-
+    /// <summary>
+    /// Determine and insert new PlaybackRecords 
+    /// </summary>
+    /// <param name="user">Needs to include <see cref="User.PlaybackRecords"/></param>
+    /// <param name="spotifyListenHistory"></param>
+    /// <returns></returns>
     public async Task<List<PlaybackRecord>> InsertNewRecords(User user, SpotifyListenHistory spotifyListenHistory)
     {
-        await InsertMissingMedia(spotifyListenHistory);
+        return await InsertNewRecords(new List<SpotifyHistoryWithUser>()
+        {
+            new()
+            {
+                user = user,
+                SpotifyListenHistory = spotifyListenHistory
+            }
+        });
+    }
+
+    /// <summary>
+    /// Determine and insert new PlaybackRecords for multiple users
+    /// </summary>
+    /// <param name="histories">Fetched histories + user, needs to include <see cref="User.PlaybackRecords"/></param>
+    /// <returns></returns>
+    public async Task<List<PlaybackRecord>> InsertNewRecords(List<SpotifyHistoryWithUser> histories)
+    {
+        await InsertMissingMedia(histories);
         var existingSpotifyMedia =
             await _dbContext.Media.Where(media => media.MediumSource == MediumSource.Spotify).ToArrayAsync();
 
-        var records = spotifyListenHistory.GetPlaybackRecords(existingSpotifyMedia, user);
+        var records = new List<PlaybackRecord>();
         
-        // filter out new records to insert
-        var latestPlaybackRecord = user.PlaybackRecords.OrderByDescending(record => record.PlayedAt).FirstOrDefault();
-        if (latestPlaybackRecord != null)
+        foreach (var history in histories)
         {
-            records = records
-                .Where(record => record.PlayedAt > latestPlaybackRecord.PlayedAt).ToList();
+            var recordsToAdd = history.SpotifyListenHistory.GetPlaybackRecords(existingSpotifyMedia, history.user);
+        
+            // filter out new records to insert
+            var latestPlaybackRecord = history.user.PlaybackRecords.OrderByDescending(record => record.PlayedAt).FirstOrDefault();
+            if (latestPlaybackRecord != null)
+            {
+                recordsToAdd = recordsToAdd
+                    .Where(record => record.PlayedAt > latestPlaybackRecord.PlayedAt).ToList();
+            }
+            records.AddRange(recordsToAdd);
         }
 
         if (records.Any())
@@ -51,7 +68,25 @@ public class PlaybackService
 
         return records;
     }
-    
+
+    private async Task InsertMissingMedia(List<SpotifyHistoryWithUser> histories)
+    {
+        var media = new List<Medium>();
+        foreach (var spotifyHistoryWithUser in histories)
+        {
+            media.AddRange(spotifyHistoryWithUser.SpotifyListenHistory.GetMedia());
+        }
+        
+        var dbExistingMedia = await _dbContext.Media.ToArrayAsync();
+
+        var mediaToInsert = media.DistinctBy(m => m.LinkToMedium).Where(m => !dbExistingMedia.Any(existingMedia =>
+            existingMedia.LinkToMedium == m.LinkToMedium
+            && existingMedia.MediumSource == m.MediumSource)).ToArray();
+
+        await _dbContext.Media.AddRangeAsync(mediaToInsert);
+        await _dbContext.SaveChangesAsync();
+    }
+
     public async Task<List<PlaybackSummary>> UpsertPlaybackSummary(List<PlaybackRecord> newInsertedRecords)
     {
         var insertedOrUpdatedSummaries = new List<PlaybackSummary>();
@@ -106,7 +141,6 @@ public class PlaybackService
         await UpdateMutualPlaybackOverviews(new List<PlaybackSummary>() { upsertedSummary });
     }
     
-    // TODO: write so that it can take the input of multiple users at once to save performance
     public async Task UpdateMutualPlaybackOverviews(List<PlaybackSummary> upsertedSummaries)
     {
         var user = upsertedSummaries.First().User;

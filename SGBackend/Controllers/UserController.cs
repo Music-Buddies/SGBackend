@@ -56,6 +56,7 @@ public class UserController : ControllerBase
         var matches = await _dbContext.MutualPlaybackOverviews
             .Include(m => m.User1)
             .Include(m => m.User2)
+            .Include(m => m.MutualPlaybackEntries)
             .Where(m => m.User1 == dbUser || m.User2 == dbUser).ToArrayAsync();
         
         return matches.GroupBy(m => m.GetOtherUser(dbUser)).Select(m => new Match()
@@ -63,7 +64,7 @@ public class UserController : ControllerBase
             username = m.Key.Name,
             userId = m.Key.Id.ToString(),
             profileUrl = m.Key.SpotifyProfileUrl,
-            listenedTogetherSeconds = m.Sum(o => o.TotalSeconds)
+            listenedTogetherSeconds = m.Sum(o => o.MutualPlaybackEntries.Sum(e => e.PlaybackSeconds))
         }).OrderByDescending(m => m.listenedTogetherSeconds).ToArray();
     }
 

@@ -3,6 +3,13 @@ using SGBackend.Models;
 namespace SGBackend.Connector;
 
 
+public class SpotifyHistoryWithUser
+{
+    public SpotifyListenHistory SpotifyListenHistory { get; set; }
+    
+    public User user { get; set; }
+}
+
 
 public class SpotifyListenHistory
 {

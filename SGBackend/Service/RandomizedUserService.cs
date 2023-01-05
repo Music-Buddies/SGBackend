@@ -6,6 +6,10 @@ using SGBackend.Models;
 
 namespace SGBackend.Service;
 
+/// <summary>
+/// For development purposes only!
+/// Generates random users based on the same dummy template data
+/// </summary>
 public class RandomizedUserService
 {
     private readonly PlaybackService _playbackService;
@@ -62,12 +66,11 @@ public class RandomizedUserService
 
     public async Task<List<User>> GenerateXRandomUsersAndCalc(int usersToGenerate)
     {
-   
+        var existingUsers = await _dbContext.User.ToListAsync();
         var users = new List<User>();
         foreach (var i in Enumerable.Range(0,usersToGenerate))
         {
-
-            var existingUsers = await _dbContext.User.ToArrayAsync();
+            
             var dummyUser = GetRandomizedDummyUser();
             users.Add(dummyUser);
             _dbContext.Add(dummyUser);
@@ -79,28 +82,25 @@ public class RandomizedUserService
                 {
                     User1 = dummyUser,
                     User2 = existingUser,
-                    TotalSeconds = 0
                 });
             }
-            await _dbContext.SaveChangesAsync();
+            existingUsers.Add(dummyUser);
         }
+        await _dbContext.SaveChangesAsync();
 
-        var summariesByUser = new List<List<PlaybackSummary>>();
-        
-        foreach (var user in users)
+        var records = await _playbackService.InsertNewRecords(users.Select(u => new SpotifyHistoryWithUser()
         {
-            var history = GetRandomizedHistory();
-            var records =  await _playbackService.InsertNewRecords(user, history);
-           
-            summariesByUser.Add(await _playbackService.UpsertPlaybackSummary(records));
-        }
-        
+            user = u,
+            SpotifyListenHistory = GetRandomizedHistory()
+        }).ToList());
 
-        foreach (var playbackSummary in summariesByUser)
-        {
-            await _playbackService.UpdateMutualPlaybackOverviews(playbackSummary);
-        }
+        var summaries = await _playbackService.UpsertPlaybackSummary(records);
         
+        
+        foreach (var playbackSummary in summaries.GroupBy(s => s.User))
+        {
+            await _playbackService.UpdateMutualPlaybackOverviews(playbackSummary.ToList());
+        }
 
         return users;
     }
