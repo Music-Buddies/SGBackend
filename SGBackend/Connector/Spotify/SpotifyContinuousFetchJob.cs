@@ -1,23 +1,24 @@
 using Microsoft.EntityFrameworkCore;
 using Quartz;
-using SGBackend.Connector;
+using SGBackend.Entities;
 using SGBackend.Service;
 
-namespace SGBackend;
+namespace SGBackend.Connector.Spotify;
 
 public class SpotifyContinuousFetchJob : IJob
 {
     private readonly SgDbContext _dbContext;
 
+    private readonly PlaybackService _playbackService;
+
     private readonly ISchedulerFactory _schedulerFactory;
 
     private readonly SpotifyConnector _spotifyConnector;
 
-    private readonly PlaybackService _playbackService;
-
     private readonly PlaybackSummaryProcessor _summaryProcessor;
 
-    public SpotifyContinuousFetchJob(SgDbContext dbContext, ISchedulerFactory schedulerFactory, SpotifyConnector spotifyConnector, PlaybackService playbackService, PlaybackSummaryProcessor summaryProcessor)
+    public SpotifyContinuousFetchJob(SgDbContext dbContext, ISchedulerFactory schedulerFactory,
+        SpotifyConnector spotifyConnector, PlaybackService playbackService, PlaybackSummaryProcessor summaryProcessor)
     {
         _dbContext = dbContext;
         _schedulerFactory = schedulerFactory;
@@ -33,18 +34,18 @@ public class SpotifyContinuousFetchJob : IJob
 
         var dbUser = await _dbContext.User.Where(u => u.Id == userId).FirstAsync();
         var availableHistory = await _spotifyConnector.FetchAvailableContentHistory(dbUser);
-        
+
         // only fetch if its not the intial job (on startup also fetches on login)
         if (!initialJob)
         {
             // insert new entries and queue them up
             var newRecords = await _playbackService.InsertNewRecords(dbUser, availableHistory);
             var newSummaries = await _playbackService.UpsertPlaybackSummary(newRecords);
-        
+
             // queue up overview update
             await _playbackService.UpdateMutualPlaybackOverviews(newSummaries);
         }
-        
+
         var scheduler = await _schedulerFactory.GetScheduler();
         var nextFetchJob = JobBuilder.Create<SpotifyContinuousFetchJob>()
             .UsingJobData("userId", userId)
@@ -54,11 +55,11 @@ public class SpotifyContinuousFetchJob : IJob
         if (availableHistory.items.Count < 2)
         {
             // user not active on spotify, reschedule for in a week
-            
+
             var oneMonthTrigger = TriggerBuilder.Create()
                 .StartAt(DateTimeOffset.Now.AddMonths(1))
                 .Build();
-            
+
             await scheduler.ScheduleJob(nextFetchJob, oneMonthTrigger);
             return;
         }
@@ -69,11 +70,11 @@ public class SpotifyContinuousFetchJob : IJob
 
         var timeToProduceRecords = mostRecentRecord.played_at - oldestRecord.played_at;
         var jobStartDate = DateTimeOffset.Now.Add(timeToProduceRecords);
-        
+
         var calculatedTrigger = TriggerBuilder.Create()
             .StartAt(jobStartDate)
             .Build();
-        
+
         await scheduler.ScheduleJob(nextFetchJob, calculatedTrigger);
     }
 }

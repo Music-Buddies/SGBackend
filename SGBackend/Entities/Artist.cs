@@ -1,6 +1,4 @@
-using SGBackend.Entities;
-
-namespace SGBackend.Models;
+namespace SGBackend.Entities;
 
 public class Artist : BaseEntity
 {

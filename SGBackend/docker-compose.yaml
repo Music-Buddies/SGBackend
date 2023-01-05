@@ -3,7 +3,7 @@ version: "3.9"
 services:
   backend:
     build: .
-    entrypoint: ["dotnet", "SGBackend.dll", "--environment", "Development"]
+    entrypoint: [ "dotnet", "SGBackend.dll", "--environment", "Development" ]
     ports:
       - "5256:80"
     environment:
@@ -22,5 +22,5 @@ services:
     volumes:
       - vmysql:/var/lib/mysql
 
-volumes: 
+volumes:
   vmysql:

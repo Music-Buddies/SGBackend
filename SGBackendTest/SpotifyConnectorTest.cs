@@ -1,7 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using SGBackend;
 using SGBackend.Connector;
+using SGBackend.Connector.Spotify;
+using SGBackend.Entities;
 
 namespace SGBackendTest;
 
@@ -15,13 +16,13 @@ public class SpotifyConnectorFixture
         services.AddScoped<SpotifyConnector>();
         ServiceProvider = services.BuildServiceProvider();
     }
-    
+
     public ServiceProvider ServiceProvider { get; set; }
 }
 
 public class SpotifyConnectorTest : IClassFixture<SpotifyConnectorFixture>
 {
-    private ServiceProvider _serviceProvider;
+    private readonly ServiceProvider _serviceProvider;
 
     public SpotifyConnectorTest(SpotifyConnectorFixture fixture)
     {
@@ -39,5 +40,4 @@ public class SpotifyConnectorTest : IClassFixture<SpotifyConnectorFixture>
 
         await connector.FetchAvailableContentHistory(user);
     }
-
 }

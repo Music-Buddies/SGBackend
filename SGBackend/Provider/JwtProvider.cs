@@ -2,7 +2,7 @@ using System.Security.Claims;
 using System.Text;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
-using SGBackend.Models;
+using SGBackend.Entities;
 
 namespace SGBackend.Provider;
 
@@ -20,16 +20,13 @@ public class JwtProvider
         // issue token with user id
         var key = Encoding.UTF8.GetBytes(_secretsProvider.GetSecret("jwt-key"));
 
-        var defaultClaims = new List<Claim>()
+        var defaultClaims = new List<Claim>
         {
             new("sub", dbUser.Id.ToString()),
             new("name", dbUser.Name)
         };
-        if (additionalClaims != null)
-        {
-            defaultClaims.AddRange(additionalClaims);
-        }
-        
+        if (additionalClaims != null) defaultClaims.AddRange(additionalClaims);
+
         var handler = new JsonWebTokenHandler();
         var token = handler.CreateToken(new SecurityTokenDescriptor
         {
@@ -37,14 +34,11 @@ public class JwtProvider
             Subject = new ClaimsIdentity(defaultClaims.ToArray()),
             SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key),
                 SecurityAlgorithms.HmacSha512Signature),
-            Expires = DateTime.Now.AddHours(3)
+            Expires = DateTime.Now.AddDays(3)
         });
-        
-        if (token == null)
-        {
-            throw new Exception($"could not create jwt for user {dbUser.Id.ToString()}");
-        }
-        
+
+        if (token == null) throw new Exception($"could not create jwt for user {dbUser.Id.ToString()}");
+
         return token;
     }
 

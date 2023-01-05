@@ -1,19 +1,12 @@
-using System.Collections.Specialized;
-using System.Security.Claims;
-using System.Text;
-using Hangfire;
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authentication.OAuth;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.JsonWebTokens;
-using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Quartz;
-using Quartz.Spi;
 using SGBackend.Connector;
-using SGBackend.Controllers;
+using SGBackend.Connector.Spotify;
+using SGBackend.Entities;
 using SGBackend.Provider;
 using SGBackend.Service;
 
@@ -52,14 +45,12 @@ public class Startup
             });
         });
 
-        services.AddQuartzHostedService(o =>
-        {
-            o.WaitForJobsToComplete = true;
-        });
+        services.AddQuartzHostedService(o => { o.WaitForJobsToComplete = true; });
 
         // configure jwt validation using tokenprovider
         services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
-            .Configure<JwtProvider>((options, provider) => options.TokenValidationParameters = provider.GetJwtValidationParameters());
+            .Configure<JwtProvider>((options, provider) =>
+                options.TokenValidationParameters = provider.GetJwtValidationParameters());
 
         services.AddAuthentication(options =>
         {
@@ -67,7 +58,6 @@ public class Startup
             options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
             options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
             options.DefaultSignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-            
         }).AddCookie(options =>
         {
             options.LoginPath = "/signin";
@@ -77,7 +67,7 @@ public class Startup
             options.ClientId = "de22eb2cc8c9478aa6f81f401bcaa23a";
             options.ClientSecret = "03e25493374146c987ee581f6f64ad1f";
             options.Scope.Add("user-read-recently-played");
-            
+
             options.Events = new OAuthEvents
             {
                 OnCreatingTicket = async context =>
@@ -85,24 +75,23 @@ public class Startup
                     // this means the user logged in successfully at spotify
                     var spotifyConnector = context.HttpContext.RequestServices.GetRequiredService<SpotifyConnector>();
                     var tokenProvider = context.HttpContext.RequestServices.GetRequiredService<JwtProvider>();
-                    var accessTokenProvider = context.HttpContext.RequestServices.GetRequiredService<AccessTokenProvider>();
+                    var accessTokenProvider =
+                        context.HttpContext.RequestServices.GetRequiredService<AccessTokenProvider>();
 
                     var handleResult = await spotifyConnector.HandleUserLoggedIn(context);
                     var dbUser = handleResult.User;
-                    
+
                     if (context.AccessToken != null && context.ExpiresIn.HasValue)
-                    {
-                        accessTokenProvider.InsertAccessToken(dbUser, new AccessToken()
+                        accessTokenProvider.InsertAccessToken(dbUser, new AccessToken
                         {
                             Fetched = DateTime.Now,
                             Token = context.AccessToken,
-                            ExpiresIn = context.ExpiresIn.Value 
+                            ExpiresIn = context.ExpiresIn.Value
                         });
-                    }
-                    
+
                     // write spotify access token to jwt
                     context.Response.Cookies.Append("jwt", tokenProvider.GetJwt(dbUser));
-                    
+
                     // cookie is still signed in but its irrelevant since we are using
                     // jwt scheme for auth
 
@@ -115,12 +104,13 @@ public class Startup
 
                         var upsertedSummaries = await playbackService.UpsertPlaybackSummary(newInsertedRecords);
 
-                        if(upsertedSummaries.Any()) await playbackService.UpdateMutualPlaybackOverviews(upsertedSummaries);
+                        if (upsertedSummaries.Any())
+                            await playbackService.UpdateMutualPlaybackOverviews(upsertedSummaries);
                     }
                 }
             };
         });
-        
+
         services.AddSwaggerGen(option =>
         {
             option.SwaggerDoc("v1", new OpenApiInfo { Title = "Demo API", Version = "v1" });
@@ -140,11 +130,11 @@ public class Startup
                     {
                         Reference = new OpenApiReference
                         {
-                            Type=ReferenceType.SecurityScheme,
-                            Id="Bearer"
+                            Type = ReferenceType.SecurityScheme,
+                            Id = "Bearer"
                         }
                     },
-                    new string[]{}
+                    new string[] { }
                 }
             });
         });
@@ -159,7 +149,7 @@ public class Startup
 
             var context = services.GetRequiredService<SgDbContext>();
             var created = context.Database.EnsureCreated();
-            
+
             if (created)
             {
                 var quartzTables = File.ReadAllText("generateQuartzTables.sql");
@@ -180,7 +170,7 @@ public class Startup
                 context.Request.Host = new HostString("localhost:5173");
                 await next();
             });
-            
+
             using (var scope = app.Services.CreateScope())
             {
                 var services = scope.ServiceProvider;
@@ -189,13 +179,13 @@ public class Startup
                 context.GenerateXRandomUsersAndCalc(5).Wait();
             }
         }
-        
+
         app.UseAuthentication();
         app.UseAuthorization();
 
         app.MapControllers();
-        
-        
+
+
         app.Run();
     }
 }

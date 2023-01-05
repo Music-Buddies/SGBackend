@@ -6,5 +6,3 @@ startup.ConfigureServices(builder.Services);
 
 var app = builder.Build();
 await startup.Configure(app);
-
-

@@ -2,6 +2,8 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using SGBackend.Entities;
+using SGBackend.Models;
 
 namespace SGBackend.Controllers;
 
@@ -10,7 +12,7 @@ namespace SGBackend.Controllers;
 public class UserController : ControllerBase
 {
     private readonly SgDbContext _dbContext;
-    
+
     public UserController(SgDbContext dbContext)
     {
         _dbContext = dbContext;
@@ -24,10 +26,10 @@ public class UserController : ControllerBase
         var dbUser = await _dbContext.User.Include(u => u.PlaybackRecords).FirstAsync(u => u.Id == userId);
 
         var earliestRecord = dbUser.PlaybackRecords.MinBy(r => r.PlayedAt);
-        return new ProfileInformation()
+        return new ProfileInformation
         {
             username = dbUser.Name,
-            trackingSince =  earliestRecord?.PlayedAt,
+            trackingSince = earliestRecord?.PlayedAt,
             profileImage = dbUser.SpotifyProfileUrl
         };
     }
@@ -37,13 +39,14 @@ public class UserController : ControllerBase
     public async Task<MediaSummary[]> GetPersonalSummary()
     {
         var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
-        
+
         var dbUser = await _dbContext.User
             .Include(u => u.PlaybackSummaries).ThenInclude(ps => ps.Medium).ThenInclude(m => m.Artists)
             .Include(u => u.PlaybackSummaries).ThenInclude(ps => ps.Medium).ThenInclude(m => m.Images)
             .FirstAsync(u => u.Id == userId);
 
-        return dbUser.PlaybackSummaries.Select(ps => ps.ToMediaSummary()).OrderByDescending(ms => ms.listenedSeconds).ToArray();
+        return dbUser.PlaybackSummaries.Select(ps => ps.ToMediaSummary()).OrderByDescending(ms => ms.listenedSeconds)
+            .ToArray();
     }
 
     [Authorize]
@@ -58,8 +61,8 @@ public class UserController : ControllerBase
             .Include(m => m.User2)
             .Include(m => m.MutualPlaybackEntries)
             .Where(m => m.User1 == dbUser || m.User2 == dbUser).ToArrayAsync();
-        
-        return matches.GroupBy(m => m.GetOtherUser(dbUser)).Select(m => new Match()
+
+        return matches.GroupBy(m => m.GetOtherUser(dbUser)).Select(m => new Match
         {
             username = m.Key.Name,
             userId = m.Key.Id.ToString(),
@@ -74,12 +77,14 @@ public class UserController : ControllerBase
     {
         var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
         var guidRequested = Guid.Parse(guid);
-        
-        var loggedInUser = await _dbContext.User.Include(u => u.PlaybackSummaries).ThenInclude(ps => ps.Medium).FirstAsync(u => u.Id == userId);
+
+        var loggedInUser = await _dbContext.User.Include(u => u.PlaybackSummaries).ThenInclude(ps => ps.Medium)
+            .FirstAsync(u => u.Id == userId);
         var knownMedia = loggedInUser.PlaybackSummaries.Select(ps => ps.Medium).ToHashSet();
-        
-        var requestedUser =  await _dbContext.User.Include(u => u.PlaybackSummaries).ThenInclude(ps => ps.Medium).FirstAsync(u => u.Id == guidRequested);
-        
+
+        var requestedUser = await _dbContext.User.Include(u => u.PlaybackSummaries).ThenInclude(ps => ps.Medium)
+            .FirstAsync(u => u.Id == guidRequested);
+
         return requestedUser.PlaybackSummaries.Where(ps => !knownMedia.Contains(ps.Medium))
             .Select(ps => ps.ToMediaSummary()).OrderByDescending(ms => ms.listenedSeconds).ToArray();
     }

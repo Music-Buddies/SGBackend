@@ -1,15 +1,13 @@
-using SGBackend.Models;
+using SGBackend.Entities;
 
-namespace SGBackend.Connector;
-
+namespace SGBackend.Connector.Spotify;
 
 public class SpotifyHistoryWithUser
 {
     public SpotifyListenHistory SpotifyListenHistory { get; set; }
-    
+
     public User user { get; set; }
 }
-
 
 public class SpotifyListenHistory
 {
@@ -21,20 +19,20 @@ public class SpotifyListenHistory
 
     public HashSet<Medium> GetMedia()
     {
-        return items.Select(item => new Medium()
+        return items.Select(item => new Medium
         {
             Title = item.track.name,
             MediumSource = MediumSource.Spotify,
             LinkToMedium = item.track.external_urls.spotify,
             ExplicitContent = item.track.@explicit,
-            Artists = item.track.artists.Select(a => new SGBackend.Models.Artist()
+            Artists = item.track.artists.Select(a => new Entities.Artist
             {
                 Name = a.name
             }).ToList(),
-            Images = item.track.album.images.Select(i => new MediumImage()
+            Images = item.track.album.images.Select(i => new MediumImage
             {
                 height = i.height,
-                imageUrl= i.url,
+                imageUrl = i.url,
                 width = i.width
             }).ToList(),
             AlbumName = item.track.album.name,
@@ -44,15 +42,15 @@ public class SpotifyListenHistory
 
     public List<PlaybackRecord> GetPlaybackRecords(Medium[] existingMediaSpotify, User user)
     {
-        return items.Select(item => new PlaybackRecord()
+        return items.Select(item => new PlaybackRecord
         {
-            Medium = existingMediaSpotify.First(media => media.MediumSource == MediumSource.Spotify && media.LinkToMedium == item.track.external_urls.spotify),
+            Medium = existingMediaSpotify.First(media =>
+                media.MediumSource == MediumSource.Spotify && media.LinkToMedium == item.track.external_urls.spotify),
             PlayedAt = item.played_at,
             PlayedSeconds = item.track.duration_ms,
             User = user
         }).ToList();
     }
-    
 }
 
 public class Album

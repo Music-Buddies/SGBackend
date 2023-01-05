@@ -1,25 +1,22 @@
-﻿using System.ComponentModel.DataAnnotations;
-using SGBackend.Entities;
-
-namespace SGBackend.Models;
+﻿namespace SGBackend.Entities;
 
 public class User : BaseEntity
 {
     public string Name { get; set; }
-    
+
     public string? SpotifyId { get; set; }
-    
+
     public string? SpotifyProfileUrl { get; set; }
-    
+
     public string? SpotifyRefreshToken { get; set; }
-    
+
     public List<PlaybackRecord> PlaybackRecords { get; set; } = new();
 
     public List<PlaybackSummary> PlaybackSummaries { get; set; } = new();
 
     public ModelUser ToModelUser()
     {
-        return new ModelUser()
+        return new ModelUser
         {
             Id = Id,
             Name = Name,
@@ -29,12 +26,11 @@ public class User : BaseEntity
     }
 }
 
-public class ModelUser{
-
+public class ModelUser
+{
     public Guid Id { get; set; }
     public string Name { get; set; }
     public string SpotifyId { get; set; }
-    
+
     public string SpotifyProfileUrl { get; set; }
-    
 }

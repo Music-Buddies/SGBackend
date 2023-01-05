@@ -1,5 +1,3 @@
-using SGBackend.Models;
-
 namespace SGBackend.Entities;
 
 public class BaseUserEntity : BaseEntity
