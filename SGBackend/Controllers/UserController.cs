@@ -82,7 +82,12 @@ public class UserController : ControllerBase
             .FirstAsync(u => u.Id == userId);
         var knownMedia = loggedInUser.PlaybackSummaries.Select(ps => ps.Medium).ToHashSet();
 
-        var requestedUser = await _dbContext.User.Include(u => u.PlaybackSummaries).ThenInclude(ps => ps.Medium)
+        var requestedUser = await _dbContext.User.Include(u => u.PlaybackSummaries)
+            .ThenInclude(ps => ps.Medium)
+            .ThenInclude(m => m.Artists)
+            .Include(u => u.PlaybackSummaries)
+            .ThenInclude(ps => ps.Medium)
+            .ThenInclude(m => m.Images)
             .FirstAsync(u => u.Id == guidRequested);
 
         return requestedUser.PlaybackSummaries.Where(ps => !knownMedia.Contains(ps.Medium))
