@@ -7,6 +7,7 @@ using Quartz;
 using SGBackend.Connector;
 using SGBackend.Connector.Spotify;
 using SGBackend.Entities;
+using SGBackend.Models;
 using SGBackend.Provider;
 using SGBackend.Service;
 
@@ -15,7 +16,7 @@ namespace SGBackend;
 public class Startup
 {
     public IConfiguration Configuration { get; set; }
-    public void ConfigureServices(WebApplicationBuilder builder /*, IServiceCollection services*/)
+    public void ConfigureServices(WebApplicationBuilder builder)
     {
         var secretConfig = builder.Configuration.GetSection("SG").Get<Secrets>();
 
