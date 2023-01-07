@@ -8,7 +8,7 @@ public class EnvSecretsProvider : ISecretsProvider
     {
         var secretName = typeof(T).Name;
         var secretJsonFromEnv = Environment.GetEnvironmentVariable("SG_" + secretName.ToUpper());
-        if (secretJsonFromEnv == null)
+        if (string.IsNullOrEmpty(secretJsonFromEnv))
         {
             throw new Exception("Env var for secret " + secretName + " not set!");
         }
