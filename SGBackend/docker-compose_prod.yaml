@@ -6,6 +6,8 @@ services:
     entrypoint: [ "dotnet", "SGBackend.dll", "--environment=Production" ]
     environment:
       - SG_SECRETS=${SG_SECRETS}
+    networks:
+      - jitcom_net
   sg-mysql:
     restart: always
     image: mysql:8.0.26
