@@ -17,13 +17,15 @@ public class Startup
 {
     public void ConfigureServices(WebApplicationBuilder builder)
     {
-        var devSecretsProvider = new DevSecretsProvider(builder.Configuration);
+        ISecretsProvider secretsProvider = null;
         if (builder.Environment.IsDevelopment())
         {
+            secretsProvider = new DevSecretsProvider(builder.Configuration);
             builder.Services.AddSingleton<ISecretsProvider, DevSecretsProvider>();
         }else if (builder.Environment.IsProduction())
         {
             builder.Services.AddSingleton<ISecretsProvider, EnvSecretsProvider>();
+            secretsProvider = new EnvSecretsProvider();
         }
 
         builder.Services.AddExternalApiClients();
@@ -50,7 +52,7 @@ public class Startup
             q.UseMicrosoftDependencyInjectionJobFactory();
             q.UsePersistentStore(o =>
             {
-                o.UseMySql(devSecretsProvider.GetSecret<Secrets>().DBConnectionString);
+                o.UseMySql(secretsProvider.GetSecret<Secrets>().DBConnectionString);
                 o.UseJsonSerializer();
             });
         });
@@ -60,7 +62,7 @@ public class Startup
         // configure jwt validation using tokenprovider
         builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
             .Configure<JwtProvider>((options, provider) =>
-                options.TokenValidationParameters = provider.GetJwtValidationParameters(devSecretsProvider.GetSecret<Secrets>().JwtKey));
+                options.TokenValidationParameters = provider.GetJwtValidationParameters(secretsProvider.GetSecret<Secrets>().JwtKey));
 
         builder.Services.AddAuthentication(options =>
         {
@@ -74,8 +76,8 @@ public class Startup
             options.LogoutPath = "/signout";
         }).AddJwtBearer().AddSpotify(options =>
         {
-            options.ClientId = devSecretsProvider.GetSecret<Secrets>().SpotifyClientId;
-            options.ClientSecret = devSecretsProvider.GetSecret<Secrets>().SpotifyClientSecret;
+            options.ClientId = secretsProvider.GetSecret<Secrets>().SpotifyClientId;
+            options.ClientSecret = secretsProvider.GetSecret<Secrets>().SpotifyClientSecret;
             options.Scope.Add("user-read-recently-played");
 
             options.Events = new OAuthEvents
