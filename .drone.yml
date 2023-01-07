@@ -12,7 +12,7 @@ server:
 steps:
   - name: deploy
     environment:
-      SG_Secrets:
+      SG_SECRETS:
         from_secret: sg_secrets
       COMPOSE_PROJECT_NAME: webservicesjitcom
     commands:

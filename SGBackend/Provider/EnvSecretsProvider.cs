@@ -10,7 +10,7 @@ public class EnvSecretsProvider : ISecretsProvider
         var secretJsonFromEnv = Environment.GetEnvironmentVariable("SG_" + secretName.ToUpper());
         if (string.IsNullOrEmpty(secretJsonFromEnv))
         {
-            throw new Exception("Env var for secret " + secretName + " not set!");
+            throw new Exception("Env var for secret " + "SG_" + secretName.ToUpper() + " not set!");
         }
 
         var secret = JsonSerializer.Deserialize<T>(secretJsonFromEnv);
