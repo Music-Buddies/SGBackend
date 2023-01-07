@@ -51,6 +51,10 @@ public class Startup
             q.UseMicrosoftDependencyInjectionJobFactory();
             q.UsePersistentStore(o =>
             {
+                if (secretsProvider == null)
+                {
+                    throw new Exception("wtf");
+                }
                 o.UseMySql(secretsProvider.GetSecret<Secrets>().DBConnectionString);
                 o.UseJsonSerializer();
             });
