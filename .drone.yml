@@ -16,8 +16,8 @@ steps:
         from_secret: sg_secrets
       COMPOSE_PROJECT_NAME: webservicesjitcom
     commands:
-      - docker compose -f docker-compose_prod.yaml build
-      - docker compose -f docker-compose_prod.yaml up -d
+      - docker compose -f SGBackend/docker-compose_prod.yaml build
+      - docker compose -f SGBackend/docker-compose_prod.yaml up -d
 
 trigger:
   branch:
