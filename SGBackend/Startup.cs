@@ -197,11 +197,8 @@ public class Startup
             app.Use(async (context, next) =>
             {
                 context.Request.Host = new HostString("suggest-app.com");
+                context.Request.Scheme = "https";
                 await next();
-            });
-            app.UseForwardedHeaders(new ForwardedHeadersOptions
-            {
-                ForwardedHeaders = ForwardedHeaders.XForwardedProto
             });
         }
 
