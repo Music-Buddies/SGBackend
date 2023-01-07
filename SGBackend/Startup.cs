@@ -44,7 +44,6 @@ public class Startup
         builder.Services.AddHostedService(p => p.GetRequiredService<PlaybackSummaryProcessor>());
 
         builder.Services.AddDatabaseDeveloperPageExceptionFilter();
-
         builder.Services.AddControllers();
 
         builder.Services.AddQuartz(q =>
