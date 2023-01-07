@@ -15,10 +15,16 @@ namespace SGBackend;
 
 public class Startup
 {
-    public IConfiguration Configuration { get; set; }
     public void ConfigureServices(WebApplicationBuilder builder)
     {
-        var secretConfig = builder.Configuration.GetSection("SG").Get<Secrets>();
+        var devSecretsProvider = new DevSecretsProvider(builder.Configuration);
+        if (builder.Environment.IsDevelopment())
+        {
+            builder.Services.AddSingleton<ISecretsProvider, DevSecretsProvider>();
+        }else if (builder.Environment.IsProduction())
+        {
+            builder.Services.AddSingleton<ISecretsProvider, EnvSecretsProvider>();
+        }
 
         builder.Services.AddExternalApiClients();
 
@@ -29,6 +35,7 @@ public class Startup
         builder.Services.AddScoped<RandomizedUserService>();
         builder.Services.AddScoped<UserService>();
         builder.Services.AddSingleton<AccessTokenProvider>();
+        builder.Services.AddScoped<DevSecretsProvider>();
 
         // register playbacksummaryprocessor and make it gettable
         builder.Services.AddSingleton<PlaybackSummaryProcessor>();
@@ -43,7 +50,7 @@ public class Startup
             q.UseMicrosoftDependencyInjectionJobFactory();
             q.UsePersistentStore(o =>
             {
-                o.UseMySql(secretConfig.DBConnectionString);
+                o.UseMySql(devSecretsProvider.GetSecret<Secrets>().DBConnectionString);
                 o.UseJsonSerializer();
             });
         });
@@ -53,7 +60,7 @@ public class Startup
         // configure jwt validation using tokenprovider
         builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
             .Configure<JwtProvider>((options, provider) =>
-                options.TokenValidationParameters = provider.GetJwtValidationParameters(secretConfig.JwtKey));
+                options.TokenValidationParameters = provider.GetJwtValidationParameters(devSecretsProvider.GetSecret<Secrets>().JwtKey));
 
         builder.Services.AddAuthentication(options =>
         {
@@ -67,8 +74,8 @@ public class Startup
             options.LogoutPath = "/signout";
         }).AddJwtBearer().AddSpotify(options =>
         {
-            options.ClientId = secretConfig.SpotifyClientId;
-            options.ClientSecret = secretConfig.SpotifyClientSecret;
+            options.ClientId = devSecretsProvider.GetSecret<Secrets>().SpotifyClientId;
+            options.ClientSecret = devSecretsProvider.GetSecret<Secrets>().SpotifyClientSecret;
             options.Scope.Add("user-read-recently-played");
 
             options.Events = new OAuthEvents
@@ -93,7 +100,7 @@ public class Startup
                         });
 
                     // write spotify access token to jwt
-                    context.Response.Cookies.Append("jwt", tokenProvider.GetJwt(dbUser, secretConfig.JwtKey));
+                    context.Response.Cookies.Append("jwt", tokenProvider.GetJwt(dbUser));
 
                     // cookie is still signed in but its irrelevant since we are using
                     // jwt scheme for auth

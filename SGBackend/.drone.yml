@@ -1,0 +1,26 @@
+kind: pipeline
+type: ssh
+name: deploy_prod_backend
+
+server:
+  host:
+    from_secret: ssh_host_prod
+  user: root
+  password:
+    from_secret: ssh_password_prod
+
+steps:
+  - name: deploy
+    environment:
+      SG_Secrets:
+        from_secret: sg_secrets
+      COMPOSE_PROJECT_NAME: webservicesjitcom
+    commands:
+      - docker compose -f docker-compose_prod.yaml build
+      - docker compose -f docker-compose_prod.yaml up -d
+
+trigger:
+  branch:
+    - master
+  event:
+    - push

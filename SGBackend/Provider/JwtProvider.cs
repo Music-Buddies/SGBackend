@@ -3,15 +3,24 @@ using System.Text;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
 using SGBackend.Entities;
+using SGBackend.Models;
 
 namespace SGBackend.Provider;
 
 public class JwtProvider
 {
-    public string GetJwt(User dbUser, string jwtKey, Claim[]? additionalClaims = null)
+    private readonly ISecretsProvider _secretsProvider;
+
+
+    public JwtProvider(ISecretsProvider secretsProvider)
+    {
+        _secretsProvider = secretsProvider;
+    }
+
+    public string GetJwt(User dbUser, Claim[]? additionalClaims = null)
     {
         // issue token with user id
-        var key = Encoding.UTF8.GetBytes(jwtKey);
+        var key = Encoding.UTF8.GetBytes(_secretsProvider.GetSecret<Secrets>().JwtKey);
 
         var defaultClaims = new List<Claim>
         {

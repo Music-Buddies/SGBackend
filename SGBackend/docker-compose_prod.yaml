@@ -1,0 +1,28 @@
+version: "3.9"
+
+services:
+  sg-backend:
+    build: .
+    entrypoint: [ "dotnet", "SGBackend.dll" ]
+    environment:
+      - ASPNETCORE_ENVIRONMENT="Production"
+  sg-mysql:
+    restart: always
+    image: mysql:8.0.26
+    cap_add:
+      - SYS_NICE
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=sg
+      - MYSQL_ROOT_HOST=%
+    volumes:
+      - vmysql:/var/lib/mysql
+    networks:
+      - jitcom_net
+
+volumes:
+  vmysql:
+    
+networks:
+  jitcom_net:
+    external: true

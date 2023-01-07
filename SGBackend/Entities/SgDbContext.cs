@@ -1,9 +1,18 @@
 using Microsoft.EntityFrameworkCore;
+using SGBackend.Models;
+using SGBackend.Provider;
 
 namespace SGBackend.Entities;
 
 public class SgDbContext : DbContext
-{
+{    
+    
+    private readonly ISecretsProvider _secretsProvider;
+    public SgDbContext(ISecretsProvider secretsProvider)
+    {
+        _secretsProvider = secretsProvider;
+    }
+
     public DbSet<User> User { get; set; }
 
     public DbSet<Medium> Media { get; set; }
@@ -20,9 +29,11 @@ public class SgDbContext : DbContext
 
     public DbSet<MutualPlaybackEntry> MutualPlaybackEntries { get; set; }
 
+
+
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
-        optionsBuilder.UseMySQL("server=localhost;database=sg;user=root;password=root");
+        optionsBuilder.UseMySQL(_secretsProvider.GetSecret<Secrets>().DBConnectionString);
     }
 
     protected override void OnModelCreating(ModelBuilder modelbuilder)
