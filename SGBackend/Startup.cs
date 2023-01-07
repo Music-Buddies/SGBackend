@@ -191,6 +191,16 @@ public class Startup
             }
         }
 
+        if (app.Environment.IsProduction())
+        {
+            app.Use(async (context, next) =>
+            {
+                context.Request.Host = new HostString("suggest-app.com");
+                context.Request.Protocol = "https";
+                await next();
+            });
+        }
+
         app.UseAuthentication();
         app.UseAuthorization();
 
