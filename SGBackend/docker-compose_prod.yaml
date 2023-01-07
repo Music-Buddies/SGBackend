@@ -4,6 +4,8 @@ services:
   sg-backend:
     build: .
     entrypoint: [ "dotnet", "SGBackend.dll", "--environment=Production" ]
+    environment:
+      - SG_SECRETS=${SG_SECRETS}
   sg-mysql:
     restart: always
     image: mysql:8.0.26
