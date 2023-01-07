@@ -3,9 +3,7 @@ version: "3.9"
 services:
   sg-backend:
     build: .
-    entrypoint: [ "dotnet", "SGBackend.dll" ]
-    environment:
-      - ASPNETCORE_ENVIRONMENT="Production"
+    entrypoint: [ "dotnet", "SGBackend.dll", "--environment=Production" ]
   sg-mysql:
     restart: always
     image: mysql:8.0.26
