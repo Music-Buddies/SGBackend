@@ -7,6 +7,7 @@ using Quartz;
 using SGBackend.Connector;
 using SGBackend.Connector.Spotify;
 using SGBackend.Entities;
+using SGBackend.Models;
 using SGBackend.Provider;
 using SGBackend.Service;
 
@@ -14,45 +15,47 @@ namespace SGBackend;
 
 public class Startup
 {
-    public void ConfigureServices(IServiceCollection services)
+    public IConfiguration Configuration { get; set; }
+    public void ConfigureServices(WebApplicationBuilder builder)
     {
-        services.AddExternalApiClients();
+        var secretConfig = builder.Configuration.GetSection("SG").Get<Secrets>();
 
-        services.AddDbContext<SgDbContext>();
-        services.AddSingleton<ISecretsProvider, LocalSecretsProvider>();
-        services.AddScoped<SpotifyConnector>();
-        services.AddSingleton<JwtProvider>();
-        services.AddScoped<PlaybackService>();
-        services.AddScoped<RandomizedUserService>();
-        services.AddScoped<UserService>();
-        services.AddSingleton<AccessTokenProvider>();
+        builder.Services.AddExternalApiClients();
+
+        builder.Services.AddDbContext<SgDbContext>();
+        builder.Services.AddScoped<SpotifyConnector>();
+        builder.Services.AddSingleton<JwtProvider>();
+        builder.Services.AddScoped<PlaybackService>();
+        builder.Services.AddScoped<RandomizedUserService>();
+        builder.Services.AddScoped<UserService>();
+        builder.Services.AddSingleton<AccessTokenProvider>();
 
         // register playbacksummaryprocessor and make it gettable
-        services.AddSingleton<PlaybackSummaryProcessor>();
-        services.AddHostedService(p => p.GetRequiredService<PlaybackSummaryProcessor>());
+        builder.Services.AddSingleton<PlaybackSummaryProcessor>();
+        builder.Services.AddHostedService(p => p.GetRequiredService<PlaybackSummaryProcessor>());
 
-        services.AddDatabaseDeveloperPageExceptionFilter();
+        builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
-        services.AddControllers();
+        builder.Services.AddControllers();
 
-        services.AddQuartz(q =>
+        builder.Services.AddQuartz(q =>
         {
             q.UseMicrosoftDependencyInjectionJobFactory();
             q.UsePersistentStore(o =>
             {
-                o.UseMySql("server=localhost;database=sg;user=root;password=root");
+                o.UseMySql(secretConfig.DBConnectionString);
                 o.UseJsonSerializer();
             });
         });
 
-        services.AddQuartzHostedService(o => { o.WaitForJobsToComplete = true; });
+        builder.Services.AddQuartzHostedService(o => { o.WaitForJobsToComplete = true; });
 
         // configure jwt validation using tokenprovider
-        services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
+        builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
             .Configure<JwtProvider>((options, provider) =>
-                options.TokenValidationParameters = provider.GetJwtValidationParameters());
+                options.TokenValidationParameters = provider.GetJwtValidationParameters(secretConfig.JwtKey));
 
-        services.AddAuthentication(options =>
+        builder.Services.AddAuthentication(options =>
         {
             options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
             options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -64,8 +67,8 @@ public class Startup
             options.LogoutPath = "/signout";
         }).AddJwtBearer().AddSpotify(options =>
         {
-            options.ClientId = "de22eb2cc8c9478aa6f81f401bcaa23a";
-            options.ClientSecret = "03e25493374146c987ee581f6f64ad1f";
+            options.ClientId = secretConfig.SpotifyClientId;
+            options.ClientSecret = secretConfig.SpotifyClientSecret;
             options.Scope.Add("user-read-recently-played");
 
             options.Events = new OAuthEvents
@@ -90,7 +93,7 @@ public class Startup
                         });
 
                     // write spotify access token to jwt
-                    context.Response.Cookies.Append("jwt", tokenProvider.GetJwt(dbUser));
+                    context.Response.Cookies.Append("jwt", tokenProvider.GetJwt(dbUser, secretConfig.JwtKey));
 
                     // cookie is still signed in but its irrelevant since we are using
                     // jwt scheme for auth
@@ -111,7 +114,7 @@ public class Startup
             };
         });
 
-        services.AddSwaggerGen(option =>
+        builder.Services.AddSwaggerGen(option =>
         {
             option.SwaggerDoc("v1", new OpenApiInfo { Title = "Demo API", Version = "v1" });
             option.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme

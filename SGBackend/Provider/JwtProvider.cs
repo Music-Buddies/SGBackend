@@ -8,17 +8,10 @@ namespace SGBackend.Provider;
 
 public class JwtProvider
 {
-    private readonly ISecretsProvider _secretsProvider;
-
-    public JwtProvider(ISecretsProvider secretsProvider)
-    {
-        _secretsProvider = secretsProvider;
-    }
-
-    public string GetJwt(User dbUser, Claim[]? additionalClaims = null)
+    public string GetJwt(User dbUser, string jwtKey, Claim[]? additionalClaims = null)
     {
         // issue token with user id
-        var key = Encoding.UTF8.GetBytes(_secretsProvider.GetSecret("jwt-key"));
+        var key = Encoding.UTF8.GetBytes(jwtKey);
 
         var defaultClaims = new List<Claim>
         {
@@ -42,7 +35,7 @@ public class JwtProvider
         return token;
     }
 
-    public TokenValidationParameters GetJwtValidationParameters()
+    public TokenValidationParameters GetJwtValidationParameters(string JwtKey)
     {
         return new TokenValidationParameters
         {
@@ -52,7 +45,7 @@ public class JwtProvider
             ValidateIssuerSigningKey = true,
             ValidIssuer = "http://localhost:5173",
             IssuerSigningKey =
-                new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_secretsProvider.GetSecret("jwt-key")))
+                new SymmetricSecurityKey(Encoding.UTF8.GetBytes(JwtKey))
         };
     }
 }
