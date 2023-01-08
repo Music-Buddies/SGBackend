@@ -17,7 +17,7 @@ public class PlaybackSummary : BaseUserEntity
     {
         return new MediaSummary
         {
-            albumImages = Medium.Images.ToArray(),
+            albumImages = SortBySize(Medium.Images),
             allArtists = Medium.Artists.Select(a => a.Name).ToArray(),
             explicitFlag = Medium.ExplicitContent,
             listenedSeconds = TotalSeconds,
@@ -26,5 +26,10 @@ public class PlaybackSummary : BaseUserEntity
             albumName = Medium.AlbumName,
             releaseDate = Medium.ReleaseDate
         };
+    }
+
+    private static MediumImage[] SortBySize(List<MediumImage> mediumImages)
+    {
+        return mediumImages.OrderBy(i => i.height).ThenBy(i => i.width).ToArray();
     }
 }
