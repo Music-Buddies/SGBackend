@@ -15,9 +15,11 @@ services:
     cap_add:
       - SYS_NICE
     environment:
-      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
       - MYSQL_DATABASE=sg
       - MYSQL_ROOT_HOST=%
+    ports:
+      - "188.68.62.150:3310:3306"
     volumes:
       - vmysql:/var/lib/mysql
     networks:
