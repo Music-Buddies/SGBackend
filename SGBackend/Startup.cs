@@ -172,7 +172,11 @@ public class Startup
         app.Use(async (context, next) =>
         {
             var logger = context.RequestServices.GetRequiredService<ILogger<Startup>>();
-            logger.LogTrace(context.Request.Path.ToString() + context.Request.QueryString.ToString()); 
+            logger.LogTrace(context.Request.Path.ToString() + context.Request.QueryString.ToString());
+            var Response = context.Response;
+            Response.Headers.Add("Cache-Control", "no-cache, no-store, must-revalidate");
+            Response.Headers.Add("Pragma", "no-cache");
+            Response.Headers.Add("Expires", "0");
             await next();
         });
       
@@ -218,7 +222,6 @@ public class Startup
             }
         }
 
-        app.UseHttpsRedirection();
         app.UseAuthentication();
         app.UseAuthorization();
 
