@@ -81,12 +81,12 @@ public class Startup
                 OnTicketReceived = async context =>
                 {
                     var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Startup>>();
-                    logger.LogInformation("executing onticketrecieved spotify");
+                    logger.LogTrace("executing onticketrecieved spotify");
                 },
                 OnCreatingTicket = async context =>
                 {
                     var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Startup>>();
-                    logger.LogInformation("executing oncreatingticket spotify");
+                    logger.LogTrace("executing oncreatingticket spotify");
                     // this means the user logged in successfully at spotify
                     var spotifyConnector = context.HttpContext.RequestServices.GetRequiredService<SpotifyConnector>();
                     var tokenProvider = context.HttpContext.RequestServices.GetRequiredService<JwtProvider>();
