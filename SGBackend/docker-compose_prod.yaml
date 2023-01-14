@@ -21,12 +21,12 @@ services:
     ports:
       - "188.68.62.150:3310:3306"
     volumes:
-      - vmysql:/var/lib/mysql
+      - v-sg-mysql:/var/lib/mysql
     networks:
       - jitcom_net
 
 volumes:
-  vmysql:
+  v-sg-mysql:
     
 networks:
   jitcom_net:

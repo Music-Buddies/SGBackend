@@ -1,14 +1,14 @@
 version: "3.9"
 
 services:
-  backend:
+  sg-backend:
     build: .
     entrypoint: [ "dotnet", "SGBackend.dll", "--environment", "Development" ]
     ports:
       - "5256:80"
     environment:
       - ASPNETCORE_ENVIRONMENT="Development"
-  mysql:
+  sg-mysql:
     restart: always
     image: mysql:8.0.26
     cap_add:
@@ -20,7 +20,7 @@ services:
     ports:
       - "3306:3306"
     volumes:
-      - vmysql:/var/lib/mysql
+      - v-sg-mysql:/var/lib/mysql
 
 volumes:
-  vmysql:
+  v-sg-mysql:
