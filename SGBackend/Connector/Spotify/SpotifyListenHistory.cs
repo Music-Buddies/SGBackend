@@ -47,7 +47,7 @@ public class SpotifyListenHistory
             Medium = existingMediaSpotify.First(media =>
                 media.MediumSource == MediumSource.Spotify && media.LinkToMedium == item.track.external_urls.spotify),
             PlayedAt = item.played_at,
-            PlayedSeconds = item.track.duration_ms,
+            PlayedSeconds = item.track.duration_ms / 1000,
             User = user
         }).ToList();
     }
