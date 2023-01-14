@@ -8,23 +8,21 @@ namespace SGBackend.Connector.Spotify;
 public class SpotifyContinuousFetchJob : IJob
 {
     private readonly SgDbContext _dbContext;
-
-    private readonly PlaybackService _playbackService;
-
+    
     private readonly ISchedulerFactory _schedulerFactory;
 
     private readonly SpotifyConnector _spotifyConnector;
 
-    private readonly PlaybackSummaryProcessor _summaryProcessor;
+    private readonly ParalellAlgoService _algoService;
+    
 
     public SpotifyContinuousFetchJob(SgDbContext dbContext, ISchedulerFactory schedulerFactory,
-        SpotifyConnector spotifyConnector, PlaybackService playbackService, PlaybackSummaryProcessor summaryProcessor)
+        SpotifyConnector spotifyConnector, ParalellAlgoService algoService)
     {
         _dbContext = dbContext;
         _schedulerFactory = schedulerFactory;
         _spotifyConnector = spotifyConnector;
-        _playbackService = playbackService;
-        _summaryProcessor = summaryProcessor;
+        _algoService = algoService;
     }
 
     public async Task Execute(IJobExecutionContext context)
@@ -38,12 +36,7 @@ public class SpotifyContinuousFetchJob : IJob
         // only fetch if its not the intial job (on startup also fetches on login)
         if (!initialJob)
         {
-            // insert new entries and queue them up
-            var newRecords = await _playbackService.InsertNewRecords(dbUser, availableHistory);
-            var newSummaries = await _playbackService.UpsertPlaybackSummary(newRecords);
-
-            // queue up overview update
-            await _playbackService.UpdateMutualPlaybackOverviews(newSummaries);
+            await _algoService.Process(dbUser.Id, availableHistory);
         }
 
         var scheduler = await _schedulerFactory.GetScheduler();

@@ -34,15 +34,11 @@ public class Startup
         builder.Services.AddDbContext<SgDbContext>();
         builder.Services.AddScoped<SpotifyConnector>();
         builder.Services.AddSingleton<JwtProvider>();
-        builder.Services.AddScoped<PlaybackService>();
         builder.Services.AddScoped<RandomizedUserService>();
         builder.Services.AddScoped<UserService>();
         builder.Services.AddSingleton<AccessTokenProvider>();
         builder.Services.AddScoped<DevSecretsProvider>();
-
-        // register playbacksummaryprocessor and make it gettable
-        builder.Services.AddSingleton<PlaybackSummaryProcessor>();
-        builder.Services.AddHostedService(p => p.GetRequiredService<PlaybackSummaryProcessor>());
+        builder.Services.AddSingleton<ParalellAlgoService>();
 
         builder.Services.AddDatabaseDeveloperPageExceptionFilter();
         builder.Services.AddControllers();
@@ -109,15 +105,11 @@ public class Startup
 
                     if (!handleResult.ExistedPreviously)
                     {
-                        var playbackService = context.HttpContext.RequestServices.GetRequiredService<PlaybackService>();
+                        var paralellAlgo =
+                            context.HttpContext.RequestServices.GetRequiredService<ParalellAlgoService>();
 
-                        var newInsertedRecords = await playbackService.InsertNewRecords(dbUser,
+                        await paralellAlgo.Process(dbUser.Id,
                             await spotifyConnector.FetchAvailableContentHistory(dbUser));
-
-                        var upsertedSummaries = await playbackService.UpsertPlaybackSummary(newInsertedRecords);
-
-                        if (upsertedSummaries.Any())
-                            await playbackService.UpdateMutualPlaybackOverviews(upsertedSummaries);
                     }
                 }
             };

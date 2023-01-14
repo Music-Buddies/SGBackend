@@ -1,8 +1,11 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using SGBackend.Connector;
 using SGBackend.Connector.Spotify;
 using SGBackend.Entities;
+using SGBackend.Models;
+using SGBackend.Provider;
 using SGBackend.Service;
 
 namespace SGBackendTest;
@@ -12,14 +15,18 @@ public class PlaybackServiceFixture
     public PlaybackServiceFixture()
     {
         var services = new ServiceCollection();
+        var builder = new ConfigurationBuilder();
+        builder.AddUserSecrets<Secrets>();
+        IConfiguration configuration = builder.Build();
+
+        services.AddScoped<IConfiguration>(_ => configuration);
         services.AddExternalApiClients();
         services.AddDbContext<SgDbContext>();
         services.AddScoped<SpotifyConnector>();
-        services.AddScoped<PlaybackService>();
         services.AddScoped<RandomizedUserService>();
         services.AddScoped<UserService>();
-
-        services.AddSingleton<PlaybackSummaryProcessor>();
+        services.AddSingleton<ISecretsProvider, DevSecretsProvider>();
+        services.AddSingleton<ParalellAlgoService>();
 
         ServiceProvider = services.BuildServiceProvider();
     }
@@ -35,38 +42,67 @@ public class PlaybackServiceTest : IClassFixture<PlaybackServiceFixture>
     {
         _serviceProvider = fixture.ServiceProvider;
     }
-
-
-    [Fact]
-    public async Task TestQueue()
-    {
-        var rndUserService = _serviceProvider.GetService<RandomizedUserService>();
-        var processor = _serviceProvider.GetService<PlaybackSummaryProcessor>();
-        await rndUserService.CreateRandomUntilSummariesAndEnque();
-        await rndUserService.CreateRandomUntilSummariesAndEnque();
-
-        await processor.ProcessSummary();
-        await processor.ProcessSummary();
-    }
-
+    
     [Fact]
     public async Task TestPerformance()
     {
         var rndUserService = _serviceProvider.GetService<RandomizedUserService>();
 
-        var rndUsers = await rndUserService.GenerateXRandomUsersAndCalc(1);
+        var rndUsers = await rndUserService.GenerateXRandomUsersAndCalc(100);
+    }
+
+    [Fact]
+    public async Task TestParalellism()
+    {
+        var userService = _serviceProvider.GetService<UserService>();
+        var rndUserService = _serviceProvider.GetService<RandomizedUserService>();
+        var db = _serviceProvider.GetService<SgDbContext>();
+        
+        // create dummy users
+        var users = new List<User>();
+        foreach (var i in Enumerable.Range(0, 5))
+        {
+            var dummyUser = await userService.AddUser(rndUserService.GetRandomizedDummyUser());
+            users.Add(dummyUser);
+        }
+        await db.SaveChangesAsync();
+        
+        
+        var tasks = new List<Task>();
+        // insert histories in paralell
+        foreach (var user in users)
+        {
+            var history = rndUserService.GetRandomizedHistory();
+            
+            var insertFunc = async () =>
+            {
+                using (var scope = _serviceProvider.CreateScope())
+                {
+                    var algo = scope.ServiceProvider.GetService<ParalellAlgoService>();
+                    await algo.Process(user.Id, history);
+                }
+            };
+            
+            foreach (var i in Enumerable.Range(0, 5))
+            {
+                tasks.Add(Task.Run(insertFunc));
+            }
+        }
+        
+        await Task.WhenAll(tasks);
     }
 
     [Fact]
     public async Task Test()
-    {
+    {   
         var db = _serviceProvider.GetService<SgDbContext>();
         var rndUserService = _serviceProvider.GetService<RandomizedUserService>();
-
         var rndUsers = await rndUserService.GenerateXRandomUsersAndCalc(5);
 
         // find matches between rndUsers 
-        var matchesBetweenRndUsers = db.MutualPlaybackOverviews.Include(m => m.MutualPlaybackEntries)
+        var matchesBetweenRndUsers = db.MutualPlaybackOverviews.Include(po => po.User1)
+            .Include(po => po.User2)
+            .Include(m => m.MutualPlaybackEntries)
             .ThenInclude(e => e.Medium).Where(m => rndUsers.Contains(m.User1) && rndUsers.Contains(m.User2)).ToArray();
 
         // validate them

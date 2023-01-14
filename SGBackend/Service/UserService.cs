@@ -3,31 +3,47 @@ using SGBackend.Entities;
 
 namespace SGBackend.Service;
 
+/// <summary>
+/// needs to be registered as singleton
+/// </summary>
 public class UserService
 {
-    private readonly SgDbContext _dbContext;
+    private readonly IServiceScopeFactory _scopeFactory;
 
-    public UserService(SgDbContext dbContext)
+    public UserService(IServiceScopeFactory scopeFactory)
     {
-        _dbContext = dbContext;
+        _scopeFactory = scopeFactory;
     }
 
+    private readonly SemaphoreSlim _addUserSlim = new(1, 1);
+    
     public async Task<User> AddUser(User user)
     {
-        var allExistingUsers = await _dbContext.User.ToArrayAsync();
-
-        _dbContext.User.Add(user);
-
-        // also fetch all other users and precreate listenedTogetherSummaries
-        foreach (var existingUser in allExistingUsers)
-            _dbContext.MutualPlaybackOverviews.Add(new MutualPlaybackOverview
+        await _addUserSlim.WaitAsync();
+        try
+        {
+            using (var scope = _scopeFactory.CreateScope())
             {
-                User1 = user,
-                User2 = existingUser
-            });
+                var dbContext = scope.ServiceProvider.GetRequiredService<SgDbContext>();
+                var allExistingUsers = await dbContext.User.ToArrayAsync();
 
-        await _dbContext.SaveChangesAsync();
+                dbContext.User.Add(user);
 
-        return user;
+                // also fetch all other users and precreate listenedTogetherSummaries
+                foreach (var existingUser in allExistingUsers)
+                    dbContext.MutualPlaybackOverviews.Add(new MutualPlaybackOverview
+                    {
+                        User1 = user,
+                        User2 = existingUser
+                    });
+
+                await dbContext.SaveChangesAsync();
+                return user;
+            }
+        }
+        finally
+        {
+            _addUserSlim.Release();
+        }
     }
 }
