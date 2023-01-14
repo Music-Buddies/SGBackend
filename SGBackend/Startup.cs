@@ -122,6 +122,7 @@ public class Startup
             };
         });
 
+        /*
         builder.Services.AddSwaggerGen(option =>
         {
             option.SwaggerDoc("v1", new OpenApiInfo { Title = "Demo API", Version = "v1" });
@@ -149,6 +150,7 @@ public class Startup
                 }
             });
         });
+        */
     }
 
     public async Task Configure(WebApplication app)
@@ -170,15 +172,15 @@ public class Startup
         app.Use(async (context, next) =>
         {
             var logger = context.RequestServices.GetRequiredService<ILogger<Startup>>();
-            logger.LogTrace(context.Request.Path.ToString()); 
+            logger.LogTrace(context.Request.Path.ToString() + context.Request.QueryString.ToString()); 
             await next();
         });
       
         // Configure the HTTP request pipeline.
         if (app.Environment.IsDevelopment())
         {
-            app.UseSwagger();
-            app.UseSwaggerUI();
+            //app.UseSwagger();
+            //app.UseSwaggerUI();
             // overwrite host for oauth redirect
             // dev fe is running on different port, vite.config.js proxies
             // the relevant oauth requests to the dev running backend
