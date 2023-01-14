@@ -108,7 +108,6 @@ public class SpotifyConnector : IContentConnector
         var history =
             await _spotifyApi.GetEntireAvailableHistory("Bearer " + await _tokenProvider.GetAccessToken(user));
         
-        var strhistory = await _spotifyApi.GetEntireAvailableHistoryStr("Bearer " + await _tokenProvider.GetAccessToken(user));
         return history;
     }
 }

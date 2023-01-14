@@ -78,6 +78,11 @@ public class Startup
 
             options.Events = new OAuthEvents
             {
+                OnTicketReceived = async context =>
+                {
+                    var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Startup>>();
+                    logger.LogInformation("executing onticketrecieved spotify");
+                },
                 OnCreatingTicket = async context =>
                 {
                     var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Startup>>();
