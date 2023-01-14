@@ -167,7 +167,13 @@ public class Startup
                 await context.Database.ExecuteSqlRawAsync(quartzTables);
             }
         }
-
+        app.Use(async (context, next) =>
+        {
+            var logger = context.RequestServices.GetRequiredService<ILogger<Startup>>();
+            logger.LogTrace(context.Request.Path.ToString()); 
+            await next();
+        });
+      
         // Configure the HTTP request pipeline.
         if (app.Environment.IsDevelopment())
         {
