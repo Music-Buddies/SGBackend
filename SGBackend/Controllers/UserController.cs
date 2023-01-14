@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using SGBackend.Connector.Spotify;
 using SGBackend.Entities;
 using SGBackend.Models;
 
@@ -13,9 +14,26 @@ public class UserController : ControllerBase
 {
     private readonly SgDbContext _dbContext;
 
-    public UserController(SgDbContext dbContext)
+    private readonly SpotifyConnector _spotifyConnector;
+
+    public UserController(SgDbContext dbContext, SpotifyConnector spotifyConnector)
     {
         _dbContext = dbContext;
+        _spotifyConnector = spotifyConnector;
+    }
+
+    [Authorize]
+    [HttpGet("spotify-token")]
+    public async Task<Token> GetSpotifyToken()
+    {
+        var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+        var dbUser = await _dbContext.User.Include(u => u.PlaybackRecords).FirstAsync(u => u.Id == userId);
+        var spotifyToken = await _spotifyConnector.GetAccessTokenUsingRefreshToken(dbUser);
+
+        return new Token()
+        {
+            spotifyToken = spotifyToken.access_token
+        };
     }
 
     [Authorize]
