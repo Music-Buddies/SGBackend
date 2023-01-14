@@ -218,6 +218,7 @@ public class Startup
             }
         }
 
+        app.UseHttpsRedirection();
         app.UseAuthentication();
         app.UseAuthorization();
 
