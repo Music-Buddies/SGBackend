@@ -39,7 +39,7 @@ public class RandomizedUserService
             JsonSerializer.Deserialize<SpotifyListenHistory>(File.ReadAllText("fullListenHistory.json"));
 
         // get random tracks
-        var randomItems = listenHistory.items.OrderBy(x => rnd.Next()).Take(10).ToList();
+        var randomItems = listenHistory.items.OrderBy(x => rnd.Next()).Take(25).ToList();
         // randomize listen times and listen duration
 
         foreach (var randomItem in randomItems)
@@ -60,7 +60,7 @@ public class RandomizedUserService
     {
         return new User
         {
-            Name = RandomString(10),
+            Name = "Dummy User: " + RandomString(10),
             SpotifyId = RandomString(10),
             SpotifyProfileUrl = "https://miro.medium.com/max/659/1*8xraf6eyaXh-myNXOXkqLA.jpeg",
             SpotifyRefreshToken = RandomString(10)
