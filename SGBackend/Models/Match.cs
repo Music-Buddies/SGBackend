@@ -9,4 +9,5 @@ public class Match
     public string profileUrl { get; set; }
 
     public long listenedTogetherSeconds { get; set; }
+    public int rank { get; set; }
 }

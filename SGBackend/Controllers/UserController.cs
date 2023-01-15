@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SGBackend.Connector.Spotify;
 using SGBackend.Entities;
+using SGBackend.Helpers;
 using SGBackend.Models;
 
 namespace SGBackend.Controllers;
@@ -80,13 +81,7 @@ public class UserController : ControllerBase
             .Include(m => m.MutualPlaybackEntries)
             .Where(m => m.User1 == dbUser || m.User2 == dbUser).ToArrayAsync();
 
-        return matches.GroupBy(m => m.GetOtherUser(dbUser)).Select(m => new Match
-        {
-            username = m.Key.Name,
-            userId = m.Key.Id.ToString(),
-            profileUrl = m.Key.SpotifyProfileUrl,
-            listenedTogetherSeconds = m.Sum(o => o.MutualPlaybackEntries.Sum(e => e.PlaybackSeconds))
-        }).OrderByDescending(m => m.listenedTogetherSeconds).ToArray();
+        return MatchesHelper.CreateMatchesArray(matches.GroupBy(m => m.GetOtherUser(dbUser)));
     }
 
     [Authorize]
