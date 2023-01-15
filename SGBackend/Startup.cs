@@ -78,15 +78,8 @@ public class Startup
 
             options.Events = new OAuthEvents
             {
-                OnTicketReceived = async context =>
-                {
-                    var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Startup>>();
-                    logger.LogTrace("executing onticketrecieved spotify");
-                },
                 OnCreatingTicket = async context =>
                 {
-                    var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Startup>>();
-                    logger.LogTrace("executing oncreatingticket spotify");
                     // this means the user logged in successfully at spotify
                     var spotifyConnector = context.HttpContext.RequestServices.GetRequiredService<SpotifyConnector>();
                     var tokenProvider = context.HttpContext.RequestServices.GetRequiredService<JwtProvider>();
@@ -121,11 +114,10 @@ public class Startup
                 }
             };
         });
-
-        /*
+        
         builder.Services.AddSwaggerGen(option =>
         {
-            option.SwaggerDoc("v1", new OpenApiInfo { Title = "Demo API", Version = "v1" });
+            option.SwaggerDoc("v1", new OpenApiInfo { Title = "SG Api", Version = "v1" });
             option.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
             {
                 In = ParameterLocation.Header,
@@ -150,7 +142,6 @@ public class Startup
                 }
             });
         });
-        */
     }
 
     public async Task Configure(WebApplication app)
@@ -169,27 +160,18 @@ public class Startup
                 await context.Database.ExecuteSqlRawAsync(quartzTables);
             }
         }
-        app.Use(async (context, next) =>
-        {
-            var logger = context.RequestServices.GetRequiredService<ILogger<Startup>>();
-            logger.LogTrace(context.Request.Path.ToString() + context.Request.QueryString.ToString());
-            var Response = context.Response;
-            Response.Headers.Add("Cache-Control", "no-cache, no-store, must-revalidate");
-            Response.Headers.Add("Pragma", "no-cache");
-            Response.Headers.Add("Expires", "0");
-            await next();
-        });
       
         // Configure the HTTP request pipeline.
         if (app.Environment.IsDevelopment())
         {
-            //app.UseSwagger();
-            //app.UseSwaggerUI();
+            app.UseSwagger();
+            app.UseSwaggerUI();
             // overwrite host for oauth redirect
             // dev fe is running on different port, vite.config.js proxies
             // the relevant oauth requests to the dev running backend
             app.Use(async (context, next) =>
             {
+                // localhost:5173 is the default port for serving the frontend with 'npm run dev'
                 context.Request.Host = new HostString("localhost:5173");
                 await next();
             });
@@ -226,8 +208,7 @@ public class Startup
         app.UseAuthorization();
 
         app.MapControllers();
-
-
+        
         app.Run();
     }
 }
