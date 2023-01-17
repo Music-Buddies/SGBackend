@@ -12,6 +12,8 @@ server:
 steps:
   - name: deploy
     environment:
+      loki_sink:
+        from_secret: loki_sink
       SG_SECRETS:
         from_secret: sg_secrets
       COMPOSE_PROJECT_NAME: webservicesjitcom
