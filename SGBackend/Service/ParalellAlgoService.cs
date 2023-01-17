@@ -1,3 +1,4 @@
+using AsyncKeyedLock;
 using Microsoft.EntityFrameworkCore;
 using SGBackend.Connector.Spotify;
 using SGBackend.Entities;
@@ -10,6 +11,11 @@ namespace SGBackend.Service;
 public class ParalellAlgoService
 {
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly AsyncKeyedLocker<Guid> _asyncKeyedLocker = new(o =>
+    {
+        o.PoolSize = 20;
+        o.PoolInitialFill = 1;
+    });
 
     public ParalellAlgoService(IServiceScopeFactory scopeFactory)
     {
@@ -33,8 +39,6 @@ public class ParalellAlgoService
         }
     }
     
-    private readonly Dictionary<Guid, SemaphoreSlim> _userSlims = new();
-
     /// <summary>
     /// 
     /// </summary>
@@ -185,30 +189,13 @@ public class ParalellAlgoService
         {
             _mediaGlobalLock.Release();
         }
-        // insert records and update summaries, locked by user
-        SemaphoreSlim userSlim;
-        // get / create lock for user
-        lock (_userSlims)
-        {
-            if (!_userSlims.ContainsKey(userId))
-            {
-                _userSlims.Add(userId, new SemaphoreSlim(1,1));
-            }
-
-            userSlim = _userSlims[userId];
-        }
 
         List<Guid> summaries;
-        await userSlim.WaitAsync();
-        try
+        using (await _asyncKeyedLocker.LockAsync(userId).ConfigureAwait(false))
         {
             summaries = await ProcessRecordsUpdateSummaries(userId, history);
         }
-        finally
-        {
-            userSlim.Release();
-        }
-        
+
         // calculate mutual playback entries, global lock
         await _mutualCalcSlim.WaitAsync();
         try
