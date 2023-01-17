@@ -18,6 +18,41 @@ public class UserControllerTest : IClassFixture<WebApplicationFactory<Startup>>
     }
 
     [Fact]
+    public async void GetProfileInformation()
+    {
+        var client = await TestSetupAsync();
+        var response = await client.GetAsync("/user/profile-information");
+        var profileInformation = await response.Content.ReadFromJsonAsync<ProfileInformation>();
+
+        Assert.NotNull(profileInformation);
+        Assert.NotNull(profileInformation.username);
+        Assert.NotNull(profileInformation.profileImage);
+        Assert.NotNull(profileInformation.trackingSince);
+    }
+
+    [Fact]
+    public async void GetPersonalSummary()
+    {
+        var client = await TestSetupAsync();
+        var response = await client.GetAsync("/user/spotify/personal-summary");
+        var mediaSummariesArray = await response.Content.ReadFromJsonAsync<MediaSummary[]>();
+
+        Assert.NotEmpty(mediaSummariesArray);
+        Assert.NotEmpty(mediaSummariesArray[0].albumImages);
+        Assert.NotNull(mediaSummariesArray[0].albumImages[0].Id);
+        Assert.NotEqual(0, mediaSummariesArray[0].albumImages[0].height);
+        Assert.NotEqual(0, mediaSummariesArray[0].albumImages[0].width);
+        Assert.NotNull(mediaSummariesArray[0].albumImages[0].imageUrl);
+        Assert.NotNull(mediaSummariesArray[0].albumName);
+        Assert.NotEmpty(mediaSummariesArray[0].allArtists);
+        Assert.NotNull(mediaSummariesArray[0].explicitFlag);
+        Assert.NotNull(mediaSummariesArray[0].linkToMedia);
+        Assert.NotEqual(0, mediaSummariesArray[0].listenedSeconds);
+        Assert.NotNull(mediaSummariesArray[0].releaseDate);
+        Assert.NotNull(mediaSummariesArray[0].songTitle);
+    }
+
+    [Fact]
     public async void GetMatches()
     {
         var client = await TestSetupAsync();
@@ -31,6 +66,31 @@ public class UserControllerTest : IClassFixture<WebApplicationFactory<Startup>>
         Assert.NotEqual(0, matchesArray[0].rank);
         Assert.Equal("1", matchesArray[0].rank.ToString());
         Assert.True(matchesArray[0].rank < matchesArray[1].rank);
+    }
+
+    [Fact]
+    public async void GetRecommendedMedia()
+    {
+        var client = await TestSetupAsync();
+        var matchesResponse = await client.GetAsync("/user/matches");
+        var matchesArray = await matchesResponse.Content.ReadFromJsonAsync<Match[]>();
+        var guid = matchesArray[0].userId;
+        var response = await client.GetAsync($"/user/matches/{guid}/recommended-media");
+        var mediaSummariesArray = await response.Content.ReadFromJsonAsync<MediaSummary[]>();
+
+        Assert.NotEmpty(mediaSummariesArray);
+        Assert.NotEmpty(mediaSummariesArray[0].albumImages);
+        Assert.NotNull(mediaSummariesArray[0].albumImages[0].Id);
+        Assert.NotEqual(0, mediaSummariesArray[0].albumImages[0].height);
+        Assert.NotEqual(0, mediaSummariesArray[0].albumImages[0].width);
+        Assert.NotNull(mediaSummariesArray[0].albumImages[0].imageUrl);
+        Assert.NotNull(mediaSummariesArray[0].albumName);
+        Assert.NotEmpty(mediaSummariesArray[0].allArtists);
+        Assert.NotNull(mediaSummariesArray[0].explicitFlag);
+        Assert.NotNull(mediaSummariesArray[0].linkToMedia);
+        Assert.NotEqual(0, mediaSummariesArray[0].listenedSeconds);
+        Assert.NotNull(mediaSummariesArray[0].releaseDate);
+        Assert.NotNull(mediaSummariesArray[0].songTitle);
     }
 
     private async Task<HttpClient> TestSetupAsync()
