@@ -9,6 +9,10 @@ services:
       - SG_SECRETS=${SG_SECRETS}
     networks:
       - jitcom_net
+    logging:
+      driver: "loki"
+      options:
+        loki-url: ${loki_sink}
   sg-mysql:
     restart: always
     image: mysql:8.0.26
@@ -24,6 +28,10 @@ services:
       - v-sg-mysql:/var/lib/mysql
     networks:
       - jitcom_net
+    logging:
+      driver: "loki"
+      options:
+        loki-url: ${loki_sink}
 
 volumes:
   v-sg-mysql:
