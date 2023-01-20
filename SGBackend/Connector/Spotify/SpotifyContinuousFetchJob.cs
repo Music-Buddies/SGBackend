@@ -64,7 +64,8 @@ public class SpotifyContinuousFetchJob : IJob
         var mostRecentRecord = availableHistory.items.First();
         var oldestRecord = availableHistory.items.Last();
 
-        var timeToProduceRecords = (mostRecentRecord.played_at - oldestRecord.played_at) * 0.01;
+        // quarter of time it took to generate to fetch again, rough estimate
+        var timeToProduceRecords = (mostRecentRecord.played_at - oldestRecord.played_at) * 0.25;
         var jobStartDate = DateTimeOffset.Now.Add(timeToProduceRecords);
         _logger.LogInformation("sheduling for: " + jobStartDate);
         var calculatedTrigger = TriggerBuilder.Create()
