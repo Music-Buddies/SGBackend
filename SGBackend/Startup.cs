@@ -203,6 +203,13 @@ public class Startup
                 context.GenerateXRandomUsersAndCalc(2).Wait();
             }
         }
+        
+        // test loggin
+        using (var scope = app.Services.CreateScope())
+        {
+            var logger = scope.ServiceProvider.GetRequiredService<ILogger<Startup>>();
+            logger.LogInformation("this should be visible in prod aswell");
+        }
 
         app.UseAuthentication();
         app.UseAuthorization();
