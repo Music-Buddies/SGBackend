@@ -29,6 +29,8 @@ public class Startup
             secretsProvider = new EnvSecretsProvider();
         }
 
+        builder.Services.AddLogging();
+
         builder.Services.AddExternalApiClients();
 
         builder.Services.AddDbContext<SgDbContext>();
