@@ -29,7 +29,14 @@ public class Startup
             secretsProvider = new EnvSecretsProvider();
         }
 
-        builder.Services.AddLogging();
+        builder.Services.AddLogging(loggingBuilder =>
+        {
+            loggingBuilder.ClearProviders();
+
+            loggingBuilder.AddConfiguration(builder.Configuration.GetSection("Logging"))
+                .AddConsole()
+                .AddDebug();
+        });
 
         builder.Services.AddExternalApiClients();
 
