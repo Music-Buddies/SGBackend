@@ -52,6 +52,46 @@ public class PlaybackServiceTest : IClassFixture<PlaybackServiceFixture>
     }
 
     [Fact]
+    public async Task TestContinuity()
+    {
+        var rndUserService = _serviceProvider.GetService<RandomizedUserService>();
+        var userService = _serviceProvider.GetService<UserService>();
+        var algoService = _serviceProvider.GetService<ParalellAlgoService>();
+        var db = _serviceProvider.GetService<SgDbContext>();
+        
+        var user = await userService.AddUser(rndUserService.GetRandomizedDummyUser());
+
+        await algoService.Process(user.Id, rndUserService.GetRandomizedHistory());
+        var insertedRecords = (await db.User
+            .Include(u => u.PlaybackRecords)
+            .FirstAsync(u => u.Id == user.Id)).PlaybackRecords.ToArray();
+        var summaries = (await db.User
+            .Include(u => u.PlaybackSummaries)
+            .FirstAsync(u => u.Id == user.Id)).PlaybackSummaries.ToArray();
+        
+        Assert.NotEmpty(insertedRecords);
+        Assert.NotEmpty(summaries);
+        
+        // move history forward and recalc, should have added more records
+        var secondHistory = rndUserService.GetRandomizedHistory();
+        foreach (var historyItem in secondHistory.items)
+        {
+            historyItem.played_at = historyItem.played_at.AddYears(1);
+        }
+        
+        await algoService.Process(user.Id, secondHistory);
+        var insertedRecords2 = (await db.User
+            .Include(u => u.PlaybackRecords)
+            .FirstAsync(u => u.Id == user.Id)).PlaybackRecords.ToArray();
+        var summaries2 = (await db.User
+            .Include(u => u.PlaybackSummaries)
+            .FirstAsync(u => u.Id == user.Id)).PlaybackSummaries.ToArray();
+        
+        Assert.True(insertedRecords2.Length > insertedRecords.Length);
+        Assert.True(summaries2.Length > summaries.Length);
+    }
+
+    [Fact]
     public async Task TestParalellism()
     {
         var userService = _serviceProvider.GetService<UserService>();

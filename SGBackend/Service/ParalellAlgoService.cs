@@ -49,7 +49,8 @@ public class ParalellAlgoService
             var existingSpotifyMedia =
                 await dbContext.Media.Where(media => media.MediumSource == MediumSource.Spotify).ToArrayAsync();
 
-            var user = await dbContext.User.Include(u => u.PlaybackRecords)
+            var user = await dbContext.User
+                .Include(u => u.PlaybackSummaries).Include(u => u.PlaybackRecords)
                 .FirstAsync(u => u.Id == userId);
             
             var recordsToAdd = history.GetPlaybackRecords(existingSpotifyMedia, user);
