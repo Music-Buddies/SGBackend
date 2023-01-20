@@ -28,16 +28,7 @@ public class Startup
             builder.Services.AddSingleton<ISecretsProvider, EnvSecretsProvider>();
             secretsProvider = new EnvSecretsProvider();
         }
-
-        builder.Services.AddLogging(loggingBuilder =>
-        {
-            loggingBuilder.ClearProviders();
-
-            loggingBuilder.AddConfiguration(builder.Configuration.GetSection("Logging"))
-                .AddConsole()
-                .AddDebug();
-        });
-
+        
         builder.Services.AddExternalApiClients();
 
         builder.Services.AddDbContext<SgDbContext>();
