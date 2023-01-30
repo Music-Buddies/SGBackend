@@ -2,6 +2,7 @@ version: "3.9"
 
 services:
   sg-backend:
+    restart: always
     build: .
     entrypoint: [ "dotnet", "SGBackend.dll", "--environment=Production" ]
     environment:
