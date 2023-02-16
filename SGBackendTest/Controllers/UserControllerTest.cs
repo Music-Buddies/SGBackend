@@ -18,6 +18,14 @@ public class UserControllerTest : IClassFixture<WebApplicationFactory<Startup>>
     }
 
     [Fact]
+    public async void SpotifyDisconnect()
+    {
+        var client = await TestSetupAsync();
+        var resp = await client.DeleteAsync("/user/spotify-disconnect");
+        Assert.True(resp.IsSuccessStatusCode);
+    }
+
+    [Fact]
     public async void GetProfileInformation()
     {
         var client = await TestSetupAsync();

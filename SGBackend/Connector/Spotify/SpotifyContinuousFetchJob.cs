@@ -34,9 +34,14 @@ public class SpotifyContinuousFetchJob : IJob
         _logger.LogInformation("executing job: " + string.Join(", ", context.MergedJobDataMap));
 
         var dbUser = await _dbContext.User.Where(u => u.Id == userId).FirstAsync();
+        if (dbUser.SpotifyRefreshToken == null)
+        {
+            // user disconnected, dont shedule new jobs
+            return;
+        }
         var availableHistory = await _spotifyConnector.FetchAvailableContentHistory(dbUser);
 
-        // only fetch if its not the intial job (on startup also fetches on login)
+        // only fetch if its not the intial job (on startup also fetches on register)
         if (!initialJob)
         {
             await _algoService.Process(dbUser.Id, availableHistory);

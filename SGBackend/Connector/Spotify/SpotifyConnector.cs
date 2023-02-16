@@ -58,8 +58,42 @@ public class SpotifyConnector : IContentConnector
                 .Include(u => u.PlaybackRecords)
                 .FirstOrDefaultAsync(user => user.SpotifyId == spotifyUserUrl.Value);
             var userExistedPreviously = dbUser != null;
-            if (dbUser == null)
+            
+            if (dbUser != null)
             {
+                // user already exists
+                
+                if (dbUser.SpotifyRefreshToken == null)
+                {
+                    // user disconnected spotify and logged back in again
+                
+                    // set refresh token again
+                    dbUser.SpotifyRefreshToken = context.RefreshToken;
+                    await _dbContext.SaveChangesAsync();
+
+                    // reschedule continuous spotify fetch job
+                    var job = JobBuilder.Create<SpotifyContinuousFetchJob>()
+                        .UsingJobData("userId", dbUser.Id)
+                        .UsingJobData("isInitialJob", false)
+                        .Build();
+                
+                    var trigger = TriggerBuilder.Create()
+                        .StartNow()
+                        .Build();
+
+                    var scheduler = await _schedulerFactory.GetScheduler();
+                    await scheduler.ScheduleJob(job, trigger);
+                }
+                else
+                {
+                    // user simply logged in again - only update refresh token
+                    dbUser.SpotifyRefreshToken = context.RefreshToken;
+                    await _dbContext.SaveChangesAsync();
+                }
+            }
+            else
+            {
+                // user registered freshly
                 var nameClaim = claimsIdentity.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name");
                 var profileUrl = claimsIdentity.FindFirst("urn:spotify:profilepicture");
 
@@ -85,12 +119,6 @@ public class SpotifyConnector : IContentConnector
 
                 var scheduler = await _schedulerFactory.GetScheduler();
                 await scheduler.ScheduleJob(job, trigger);
-            }
-            else
-            {
-                // user exists only update refresh token
-                dbUser.SpotifyRefreshToken = context.RefreshToken;
-                await _dbContext.SaveChangesAsync();
             }
 
             return new UserLoggedInResult

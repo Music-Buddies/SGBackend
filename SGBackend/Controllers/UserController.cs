@@ -38,6 +38,17 @@ public class UserController : ControllerBase
     }
 
     [Authorize]
+    [HttpDelete("spotify-disconnect")]
+    public async Task<IActionResult> DisconnectSpotify()
+    {
+        var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+        var dbUser = await _dbContext.User.FirstAsync(u => u.Id == userId);
+        dbUser.SpotifyRefreshToken = null;
+        await _dbContext.SaveChangesAsync();
+        return Ok();
+    }
+    
+    [Authorize]
     [HttpGet("profile-information")]
     public async Task<ProfileInformation> GetProfileInformation()
     {
