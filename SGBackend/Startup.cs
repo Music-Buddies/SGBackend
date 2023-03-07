@@ -193,15 +193,6 @@ public class Startup
                 context.Request.Scheme = "https";
                 await next();
             });
-            
-            // create some dummy users for reference aswell
-            using (var scope = app.Services.CreateScope())
-            {
-                var services = scope.ServiceProvider;
-
-                var context = services.GetRequiredService<RandomizedUserService>();
-                context.GenerateXRandomUsersAndCalc(2).Wait();
-            }
         }
         
         // test loggin
