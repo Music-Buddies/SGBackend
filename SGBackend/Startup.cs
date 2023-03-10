@@ -21,7 +21,7 @@ public class Startup
     public void ConfigureServices(WebApplicationBuilder builder)
     {
         
-        builder.AddSecretsProvider("SG");
+        builder.AddSecretsProvider("SG_");
         var tempProvider = builder.Services.BuildServiceProvider();
         ISecretsProvider secretsProvider = tempProvider.GetRequiredService<ISecretsProvider>();
 
