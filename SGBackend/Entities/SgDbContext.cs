@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using SecretsProvider;
 using SGBackend.Models;
 using SGBackend.Provider;
 

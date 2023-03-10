@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using Quartz;
+using SecretsProvider;
 using SGBackend.Connector;
 using SGBackend.Connector.Spotify;
 using SGBackend.Entities;
@@ -12,23 +13,18 @@ using SGBackend.Models;
 using SGBackend.Provider;
 using SGBackend.Service;
 
+
 namespace SGBackend;
 
 public class Startup
 {
     public void ConfigureServices(WebApplicationBuilder builder)
     {
-        ISecretsProvider secretsProvider = null;
-        if (builder.Environment.IsDevelopment())
-        {
-            secretsProvider = new DevSecretsProvider(builder.Configuration);
-            builder.Services.AddSingleton<ISecretsProvider, DevSecretsProvider>();
-        }else if (builder.Environment.IsProduction())
-        {
-            builder.Services.AddSingleton<ISecretsProvider, EnvSecretsProvider>();
-            secretsProvider = new EnvSecretsProvider();
-        }
         
+        builder.AddSecretsProvider("SG");
+        var tempProvider = builder.Services.BuildServiceProvider();
+        ISecretsProvider secretsProvider = tempProvider.GetRequiredService<ISecretsProvider>();
+
         builder.Services.AddExternalApiClients();
 
         builder.Services.AddDbContext<SgDbContext>();
@@ -37,7 +33,6 @@ public class Startup
         builder.Services.AddScoped<RandomizedUserService>();
         builder.Services.AddScoped<UserService>();
         builder.Services.AddSingleton<AccessTokenProvider>();
-        builder.Services.AddScoped<DevSecretsProvider>();
         builder.Services.AddSingleton<ParalellAlgoService>();
 
         builder.Services.AddDatabaseDeveloperPageExceptionFilter();
@@ -72,6 +67,7 @@ public class Startup
             options.LogoutPath = "/signout";
         }).AddJwtBearer().AddSpotify(options =>
         {
+            
             options.ClientId = secretsProvider.GetSecret<Secrets>().SpotifyClientId;
             options.ClientSecret = secretsProvider.GetSecret<Secrets>().SpotifyClientSecret;
             options.Scope.Add("user-read-recently-played");

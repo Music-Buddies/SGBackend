@@ -11,9 +11,12 @@ public class ParalellAlgoService
 {
     private readonly IServiceScopeFactory _scopeFactory;
 
-    public ParalellAlgoService(IServiceScopeFactory scopeFactory)
+    private readonly ILogger<ParalellAlgoService> _logger;
+
+    public ParalellAlgoService(IServiceScopeFactory scopeFactory, ILogger<ParalellAlgoService> logger)
     {
         _scopeFactory = scopeFactory;
+        _logger = logger;
     }
 
     private readonly SemaphoreSlim _mediaGlobalLock = new SemaphoreSlim(1, 1);
@@ -43,6 +46,7 @@ public class ParalellAlgoService
     /// <returns>Ids of updated/inserted playbacksummaries</returns>
     private async Task<List<Guid>> ProcessRecordsUpdateSummaries(Guid userId, SpotifyListenHistory history)
     {
+        
         using (var scope = _scopeFactory.CreateScope())
         {
             var dbContext = scope.ServiceProvider.GetRequiredService<SgDbContext>();
@@ -63,6 +67,8 @@ public class ParalellAlgoService
 
             if (recordsToAdd.Any())
             {
+                var watch = System.Diagnostics.Stopwatch.StartNew();
+                
                 // add them to db
                 await dbContext.AddRangeAsync(recordsToAdd);
                 await dbContext.SaveChangesAsync();
@@ -100,6 +106,11 @@ public class ParalellAlgoService
 
                 await dbContext.SaveChangesAsync();
                 
+                watch.Stop();
+                var elapsedMs = watch.ElapsedMilliseconds;
+                
+                _logger.LogInformation("Update Summaries for {guid} took {ms} ms", userId, elapsedMs);
+                
                 return upsertedSummaries.Select(ps => ps.Id).ToList();
             }
             
@@ -112,6 +123,7 @@ public class ParalellAlgoService
 
     private async Task UpdateMutualPlaybackOverviews(Guid userId, List<Guid> summaryIds)
     {
+        var watch = System.Diagnostics.Stopwatch.StartNew();
         using (var scope = _scopeFactory.CreateScope())
         {
             var dbContext = scope.ServiceProvider.GetRequiredService<SgDbContext>();
@@ -171,6 +183,11 @@ public class ParalellAlgoService
             }
 
             await dbContext.SaveChangesAsync();
+            
+            watch.Stop();
+            var elapsedMs = watch.ElapsedMilliseconds;
+                
+            _logger.LogInformation("Update Overviews for {guid} took {ms} ms", userId, elapsedMs);
         }
     }
     
