@@ -155,13 +155,15 @@ public class Startup
                 var quartzTables = File.ReadAllText("generateQuartzTables.sql");
                 await context.Database.ExecuteSqlRawAsync(quartzTables);
             }
+            
         }
-      
+        
+        app.UseSwagger();
+        app.UseSwaggerUI();
+        
         // Configure the HTTP request pipeline.
         if (app.Environment.IsDevelopment())
         {
-            app.UseSwagger();
-            app.UseSwaggerUI();
             // overwrite host for oauth redirect
             // dev fe is running on different port, vite.config.js proxies
             // the relevant oauth requests to the dev running backend
