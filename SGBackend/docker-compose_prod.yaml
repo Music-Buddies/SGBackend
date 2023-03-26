@@ -9,6 +9,8 @@ services:
       - SG_SECRETS=${SG_SECRETS}
     networks:
       - jitcom_net
+    ports:
+      - "188.68.62.150:4214:80"
     logging:
       driver: "loki"
       options:
