@@ -96,6 +96,32 @@ public class UserController : ControllerBase
     }
 
     [Authorize]
+    [HttpGet("matches/{guid}/together-consumed/tracks")]
+    public async Task<MediaSummary[]> GetListenedTogetherTracks(string guid)
+    {
+        var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+        var guidRequested = Guid.Parse(guid);
+
+        var loggedInUser = await _dbContext.User.Include(u => u.PlaybackSummaries).ThenInclude(ps => ps.Medium)
+            .FirstAsync(u => u.Id == userId);
+        
+        var requestedUser = await _dbContext.User.Include(u => u.PlaybackSummaries).FirstAsync(u => u.Id == guidRequested);
+        
+        var match = await _dbContext.MutualPlaybackOverviews
+            .Include(m => m.User1)
+            .Include(m => m.User2)
+            .Include(m => m.MutualPlaybackEntries)
+            .ThenInclude(entry => entry.Medium)
+            .ThenInclude(m => m.Artists)
+            .Include(m => m.MutualPlaybackEntries)
+            .ThenInclude(m => m.Medium)
+            .ThenInclude(m => m.Images)
+            .FirstAsync(m => (m.User1 == loggedInUser && m.User2 == requestedUser) || (m.User2 == loggedInUser && m.User1 == requestedUser));
+
+        return match.MutualPlaybackEntries.Select(m => m.Medium.ToMediaSummary(m.PlaybackSeconds)).OrderByDescending(ms => ms.listenedSeconds).ToArray();
+    }
+
+    [Authorize]
     [HttpGet("matches/{guid}/recommended-media")]
     public async Task<MediaSummary[]> GetRecommendedMedia(string guid)
     {

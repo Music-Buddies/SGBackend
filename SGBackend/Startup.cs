@@ -177,7 +177,7 @@ public class Startup
                 var services = scope.ServiceProvider;
 
                 var context = services.GetRequiredService<RandomizedUserService>();
-                context.GenerateXRandomUsersAndCalc(5).Wait();
+                //context.GenerateXRandomUsersAndCalc(5).Wait();
             }
         }
 
