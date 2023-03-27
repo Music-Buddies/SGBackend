@@ -37,7 +37,8 @@ public class Medium : BaseEntity
             explicitFlag = ExplicitContent,
             listenedSeconds = totalSeconds,
             songTitle = Title,
-            linkToMedia = LinkToMedium,
+            // https://open.spotify.com/track/4EWCNWgDS8707fNSZ1oaA5
+            linkToMedia = $"spotify:track:{LinkToMedium.Split("/").Last()}",
             albumName = AlbumName,
             releaseDate = ReleaseDate
         };
