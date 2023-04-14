@@ -3,7 +3,9 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authentication.OAuth;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.OpenApi.Models;
+using MySql.EntityFrameworkCore.Extensions;
 using Quartz;
 using SecretsProvider;
 using SGBackend.Connector;
@@ -15,6 +17,17 @@ using SGBackend.Service;
 
 
 namespace SGBackend;
+
+// mysql fix
+public class MysqlEntityFrameworkDesignTimeServices : IDesignTimeServices
+{
+    public void ConfigureDesignTimeServices(IServiceCollection serviceCollection)
+    {
+        serviceCollection.AddEntityFrameworkMySQL();
+        new EntityFrameworkRelationalDesignServicesBuilder(serviceCollection)
+            .TryAddCoreServices();
+    }
+}
 
 public class Startup
 {
