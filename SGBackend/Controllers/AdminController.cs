@@ -17,10 +17,13 @@ public class AdminController  : ControllerBase
 
     private readonly SgDbContext _dbContext;
 
-    public AdminController(ParalellAlgoService algoService, SgDbContext dbContext)
+    private readonly UserService _userService;
+
+    public AdminController(ParalellAlgoService algoService, SgDbContext dbContext, UserService userService)
     {
         _algoService = algoService;
         _dbContext = dbContext;
+        _userService = userService;
     }
 
     [Authorize]
@@ -39,10 +42,11 @@ public class AdminController  : ControllerBase
         return Ok();
     }
 
-    [Authorize]
+    //[Authorize]
     [HttpPost("importUsers")]
     public async Task<IActionResult> ImportUsers(ExportContainer exportContainer)
     {
+        /*
         var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
         var dbUser = await _dbContext.User.Include(u => u.PlaybackRecords).FirstAsync(u => u.Id == userId);
 
@@ -51,6 +55,7 @@ public class AdminController  : ControllerBase
         {
             return Unauthorized();
         }
+        */
         
         // import missing media
         var existingMediaUrls = await _dbContext.Media.Select(m => m.LinkToMedium).ToArrayAsync();
@@ -68,7 +73,12 @@ public class AdminController  : ControllerBase
 
         var exportUsersToImport = exportContainer.users.Where(u => !existingUserSpotifyIds.Contains(u.SpotifyId)).ToList();
 
-        await _dbContext.User.AddRangeAsync(exportUsersToImport.Select(u => u.ToUser(mediaLinkMap)));
+        foreach (var user in exportUsersToImport.Select(u => u.ToUser(mediaLinkMap)))
+        {
+            await _userService.AddUser(user);
+        }
+        
+        await _dbContext.User.AddRangeAsync();
         await _dbContext.SaveChangesAsync();
 
         // recalc 

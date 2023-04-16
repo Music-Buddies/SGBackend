@@ -117,8 +117,13 @@ public class Startup
                         var paralellAlgo =
                             context.HttpContext.RequestServices.GetRequiredService<ParalellAlgoService>();
 
-                        await paralellAlgo.Process(dbUser.Id,
-                            await spotifyConnector.FetchAvailableContentHistory(dbUser));
+                        var history = await spotifyConnector.FetchAvailableContentHistory(dbUser);
+
+                        if (history != null)
+                        {
+                            // only with valid token
+                            await paralellAlgo.Process(dbUser.Id, history);
+                        }
                     }
                 }
             };
@@ -161,14 +166,8 @@ public class Startup
             var services = scope.ServiceProvider;
 
             var context = services.GetRequiredService<SgDbContext>();
-            var created = context.Database.EnsureCreated();
 
-            if (created)
-            {
-                var quartzTables = File.ReadAllText("generateQuartzTables.sql");
-                await context.Database.ExecuteSqlRawAsync(quartzTables);
-            }
-            
+            await context.Database.MigrateAsync();
         }
         
         app.UseSwagger();
@@ -193,6 +192,20 @@ public class Startup
 
                 var context = services.GetRequiredService<RandomizedUserService>();
                 //context.GenerateXRandomUsersAndCalc(5).Wait();
+
+                var dbContext = services.GetRequiredService<SgDbContext>();
+                var state = await dbContext.States.FirstOrDefaultAsync();
+                if (state == null)
+                {
+                    dbContext.States.Add(new State
+                    {
+                        QuartzApplied = true
+                    });
+
+                    // first initialisations
+                    var quartzTables = File.ReadAllText("generateQuartzTables.sql");
+                    await dbContext.Database.ExecuteSqlRawAsync(quartzTables);
+                }
             }
         }
 

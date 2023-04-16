@@ -35,7 +35,7 @@ public class SpotifyConnector : IContentConnector
         _schedulerFactory = schedulerFactory;
     }
 
-    public async Task<TokenResponse> GetAccessTokenUsingRefreshToken(User dbUser)
+    public async Task<TokenResponse?> GetAccessTokenUsingRefreshToken(User dbUser)
     {
         var token = await _spotifyAuthApi.GetTokenFromRefreshToken(new Dictionary<string, object>
         {
@@ -43,7 +43,13 @@ public class SpotifyConnector : IContentConnector
             { "refresh_token", dbUser.SpotifyRefreshToken }
         });
 
-        return token;
+        if (token.IsSuccessStatusCode)
+        {
+            return token.Content;
+        }
+        _logger.LogError(token.Error.Content);
+
+        return null;
     }
 
     public async Task<UserLoggedInResult> HandleUserLoggedIn(OAuthCreatingTicketContext context)
@@ -131,10 +137,17 @@ public class SpotifyConnector : IContentConnector
         throw new Exception("could not find user url in claims from spotify");
     }
 
-    public async Task<SpotifyListenHistory> FetchAvailableContentHistory(User user)
+    public async Task<SpotifyListenHistory?> FetchAvailableContentHistory(User user)
     {
+        var accessToken = await _tokenProvider.GetAccessToken(user);
+
+        if (accessToken == null)
+        {
+            return null;
+        }
+        
         var history =
-            await _spotifyApi.GetEntireAvailableHistory("Bearer " + await _tokenProvider.GetAccessToken(user));
+            await _spotifyApi.GetEntireAvailableHistory("Bearer " + accessToken);
         
         return history;
     }

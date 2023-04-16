@@ -40,6 +40,11 @@ public class SpotifyContinuousFetchJob : IJob
             return;
         }
         var availableHistory = await _spotifyConnector.FetchAvailableContentHistory(dbUser);
+        if (availableHistory == null)
+        {
+            // no access token
+            return;
+        }
 
         // only fetch if its not the intial job (on startup also fetches on register)
         if (!initialJob)

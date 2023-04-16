@@ -25,6 +25,8 @@ public class SgDbContext : DbContext
     public DbSet<MediumImage> Images { get; set; }
 
     public DbSet<Artist> Artists { get; set; }
+    
+    public DbSet<State> States { get; set; }
 
     public DbSet<MutualPlaybackOverview> MutualPlaybackOverviews { get; set; }
 

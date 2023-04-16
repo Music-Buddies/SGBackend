@@ -25,13 +25,18 @@ public class UserController : ControllerBase
 
     [Authorize]
     [HttpGet("spotify-token")]
-    public async Task<Token> GetSpotifyToken()
+    public async Task<Token?> GetSpotifyToken()
     {
         var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
         var dbUser = await _dbContext.User.Include(u => u.PlaybackRecords).FirstAsync(u => u.Id == userId);
         var spotifyToken = await _spotifyConnector.GetAccessTokenUsingRefreshToken(dbUser);
 
-        return new Token()
+        if (spotifyToken == null)
+        {
+            return null;
+        }
+        
+        return new Token
         {
             spotifyToken = spotifyToken.access_token
         };
