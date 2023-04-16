@@ -93,6 +93,8 @@ public class ExportMedium
             ReleaseDate = ReleaseDate,
             AlbumName = AlbumName,
             ExplicitContent = ExplicitContent,
+            Artists = Artists.Select(artist => artist.ToArtist()).ToList(),
+            Images = Images.Select(image => image.ToMediumImage()).ToList()
         };
     }
 }
