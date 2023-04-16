@@ -201,10 +201,12 @@ public class Startup
                     {
                         QuartzApplied = true
                     });
-
+                    
                     // first initialisations
                     var quartzTables = File.ReadAllText("generateQuartzTables.sql");
                     await dbContext.Database.ExecuteSqlRawAsync(quartzTables);
+                    
+                    await dbContext.SaveChangesAsync();
                 }
             }
         }
