@@ -48,4 +48,51 @@ public class Medium : BaseEntity
     {
         return mediumImages.OrderBy(i => i.height).ThenBy(i => i.width).ToArray();
     }
+
+    public ExportMedium ToExportMedium()
+    {
+        return new ExportMedium
+        {
+            Artists = Artists.Select(a => a.ToExportArtist()).ToList(),
+            Images = Images.Select(i => i.ToExportImage()).ToList(),
+            AlbumName = AlbumName,
+            ExplicitContent = ExplicitContent,
+            Title = Title,
+            MediumSource = MediumSource,
+            ReleaseDate = ReleaseDate,
+            LinkToMedium = LinkToMedium
+        };
+    }
+}
+
+public class ExportMedium
+{
+    public string Title { get; set; }
+
+    public MediumSource MediumSource { get; set; }
+    
+    public string LinkToMedium { get; set; }
+
+    public bool ExplicitContent { get; set; }
+
+    public List<ExportArtist> Artists { get; set; }
+
+    public List<ExportMediumImage> Images { get; set; }
+
+    public string AlbumName { get; set; }
+
+    public string ReleaseDate { get; set; }
+
+    public Medium ToMedium()
+    {
+        return new Medium
+        {
+            LinkToMedium = LinkToMedium,
+            Title = Title,
+            MediumSource = MediumSource,
+            ReleaseDate = ReleaseDate,
+            AlbumName = AlbumName,
+            ExplicitContent = ExplicitContent,
+        };
+    }
 }

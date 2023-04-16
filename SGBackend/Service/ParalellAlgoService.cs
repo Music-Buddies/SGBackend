@@ -20,6 +20,34 @@ public class ParalellAlgoService
     }
 
     private readonly SemaphoreSlim _mediaGlobalLock = new SemaphoreSlim(1, 1);
+
+    
+    public async Task UpdateAll()
+    {
+        using (var scope = _scopeFactory.CreateScope())
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<SgDbContext>();
+            var connector = scope.ServiceProvider.GetRequiredService<SpotifyConnector>();
+
+            var summaryGuids = new List<Guid>();
+            
+            var users = await dbContext.User.ToArrayAsync();
+            
+            foreach (var user in users)
+            {
+                var history = await connector.FetchAvailableContentHistory(user);
+
+                var ret = await ProcessRecordsUpdateSummaries(user.Id, history);
+                
+                summaryGuids.AddRange(ret);
+            }
+
+            foreach (var user in users)
+            {
+                await UpdateMutualPlaybackOverviews(user.Id, summaryGuids);
+            }
+        }
+    }
     
     private async Task UpdateMedia(SpotifyListenHistory history)
     {
@@ -166,19 +194,43 @@ public class ParalellAlgoService
 
                     var mutualPlaybackEntry = playbackOverview.MutualPlaybackEntries
                         .FirstOrDefault(e => e.Medium == otherSummary.Medium);
-
+                    
+                    long playbackSecondsUser1;
+                    long playbackSecondsUser2;
+                    if (otherSummary.User == mutualPlaybackEntry.MutualPlaybackOverview.User1 && upsertedSummary.User == mutualPlaybackEntry.MutualPlaybackOverview.User2)
+                    {
+                        playbackSecondsUser1 = otherSummary.TotalSeconds;
+                        playbackSecondsUser2 = upsertedSummary.TotalSeconds;
+                    }
+                    else
+                    {
+                        playbackSecondsUser1 = upsertedSummary.TotalSeconds;
+                        playbackSecondsUser2 = otherSummary.TotalSeconds;
+                    }
+                    
                     if (mutualPlaybackEntry != null)
+                    {
                         // update seconds
                         mutualPlaybackEntry.PlaybackSeconds =
                             Math.Min(otherSummary.TotalSeconds, upsertedSummary.TotalSeconds);
+                        //mutualPlaybackEntry.PlaybackSecondsUser1 = playbackSecondsUser1;
+                        //mutualPlaybackEntry.PlaybackSecondsUser2 = playbackSecondsUser2;
+                    }
                     else
+                    {
                         // create
                         playbackOverview.MutualPlaybackEntries.Add(new MutualPlaybackEntry
                         {
                             Medium = upsertedSummary.Medium,
                             PlaybackSeconds = Math.Min(otherSummary.TotalSeconds, upsertedSummary.TotalSeconds),
+                            //PlaybackSecondsUser1 = playbackSecondsUser1,
+                            //PlaybackSecondsUser2 = playbackSecondsUser2,
                             MutualPlaybackOverview = playbackOverview
                         });
+                    }
+                        
+                        
+                      
                 }
             }
 
