@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Org.BouncyCastle.Utilities;
+using Quartz;
+using SGBackend.Connector.Spotify;
 using SGBackend.Entities;
 using SGBackend.Models;
 using SGBackend.Service;
@@ -18,45 +20,21 @@ public class AdminController  : ControllerBase
     private readonly SgDbContext _dbContext;
 
     private readonly UserService _userService;
+    
+    private readonly ISchedulerFactory _schedulerFactory;
 
-    public AdminController(ParalellAlgoService algoService, SgDbContext dbContext, UserService userService)
+    public AdminController(ParalellAlgoService algoService, SgDbContext dbContext, UserService userService, ISchedulerFactory schedulerFactory)
     {
         _algoService = algoService;
         _dbContext = dbContext;
         _userService = userService;
+        _schedulerFactory = schedulerFactory;
     }
-
-    [Authorize]
-    [HttpPost("updateAll")]
-    public async Task<IActionResult> UpdateAll()
-    {
-        var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
-        var dbUser = await _dbContext.User.Include(u => u.PlaybackRecords).FirstAsync(u => u.Id == userId);
-
-        var allowedUsers = new List<string>() { "https://open.spotify.com/user/31ahh7pd3xdhtwipis3fprv3vp24", "https://open.spotify.com/user/4wfpnlvgdiwp1jfde3a80n9ml"};
-        if (!allowedUsers.Contains(dbUser.SpotifyId))
-        {
-            return Unauthorized();
-        }
-        await _algoService.UpdateAll();
-        return Ok();
-    }
-
+    
     //[Authorize]
     [HttpPost("importUsers")]
     public async Task<IActionResult> ImportUsers(ExportContainer exportContainer)
     {
-        /*
-        var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
-        var dbUser = await _dbContext.User.Include(u => u.PlaybackRecords).FirstAsync(u => u.Id == userId);
-
-        var allowedUsers = new List<string>() { "https://open.spotify.com/user/31ahh7pd3xdhtwipis3fprv3vp24", "https://open.spotify.com/user/4wfpnlvgdiwp1jfde3a80n9ml"};
-        if (!allowedUsers.Contains(dbUser.SpotifyId))
-        {
-            return Unauthorized();
-        }
-        */
-        
         // import missing media
         var existingMediaUrls = await _dbContext.Media.Select(m => m.LinkToMedium).ToArrayAsync();
 
@@ -73,7 +51,9 @@ public class AdminController  : ControllerBase
 
         var exportUsersToImport = exportContainer.users.Where(u => !existingUserSpotifyIds.Contains(u.SpotifyId)).ToList();
 
-        foreach (var user in exportUsersToImport.Select(u => u.ToUser(mediaLinkMap)))
+        var dbUsers = exportUsersToImport.Select(u => u.ToUser(mediaLinkMap)).ToArray();
+        
+        foreach (var user in dbUsers)
         {
             await _userService.AddUser(user);
         }
@@ -83,6 +63,25 @@ public class AdminController  : ControllerBase
 
         // recalc 
         await _algoService.UpdateAll();
+        
+        // shedule jobs
+        foreach (var user in dbUsers)
+        {
+            // start jobs
+            // reschedule continuous spotify fetch job
+            var job = JobBuilder.Create<SpotifyContinuousFetchJob>()
+                .UsingJobData("userId", user.Id)
+                .UsingJobData("isInitialJob", true)
+                .Build();
+                
+            var trigger = TriggerBuilder.Create()
+                .StartNow()
+                .Build();
+
+            var scheduler = await _schedulerFactory.GetScheduler();
+            await scheduler.ScheduleJob(job, trigger);
+        }
+       
         
         return Ok();
     }
