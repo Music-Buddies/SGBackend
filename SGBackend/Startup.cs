@@ -192,22 +192,6 @@ public class Startup
 
                 var context = services.GetRequiredService<RandomizedUserService>();
                 //context.GenerateXRandomUsersAndCalc(5).Wait();
-
-                var dbContext = services.GetRequiredService<SgDbContext>();
-                var state = await dbContext.States.FirstOrDefaultAsync();
-                if (state == null)
-                {
-                    dbContext.States.Add(new State
-                    {
-                        QuartzApplied = true
-                    });
-                    
-                    // first initialisations
-                    var quartzTables = File.ReadAllText("generateQuartzTables.sql");
-                    await dbContext.Database.ExecuteSqlRawAsync(quartzTables);
-                    
-                    await dbContext.SaveChangesAsync();
-                }
             }
         }
 
@@ -219,6 +203,28 @@ public class Startup
                 context.Request.Scheme = "https";
                 await next();
             });
+        }
+        
+        // quartz init
+        using (var scope = app.Services.CreateScope())
+        {
+            var services = scope.ServiceProvider;
+            
+            var dbContext = services.GetRequiredService<SgDbContext>();
+            var state = await dbContext.States.FirstOrDefaultAsync();
+            if (state == null)
+            {
+                dbContext.States.Add(new State
+                {
+                    QuartzApplied = true
+                });
+                    
+                // first initialisations
+                var quartzTables = File.ReadAllText("generateQuartzTables.sql");
+                await dbContext.Database.ExecuteSqlRawAsync(quartzTables);
+                    
+                await dbContext.SaveChangesAsync();
+            }
         }
         
         // test loggin
