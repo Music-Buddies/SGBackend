@@ -32,7 +32,7 @@ public class AdminController  : ControllerBase
     }
     
     //[Authorize]
-    [HttpPost("importUsers")]
+    //[HttpPost("importUsers")]
     public async Task<IActionResult> ImportUsers(ExportContainer exportContainer)
     {
         // import missing media
