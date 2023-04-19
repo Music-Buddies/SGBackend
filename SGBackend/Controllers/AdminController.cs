@@ -32,7 +32,7 @@ public class AdminController  : ControllerBase
     }
     
     //[Authorize]
-    //[HttpPost("importUsers")]
+    [HttpPost("importUsers")]
     public async Task<IActionResult> ImportUsers(ExportContainer exportContainer)
     {
         // import missing media
@@ -75,13 +75,13 @@ public class AdminController  : ControllerBase
                 .Build();
                 
             var trigger = TriggerBuilder.Create()
+                .WithIdentity(user.Id.ToString(), "fetch")
                 .StartNow()
                 .Build();
 
             var scheduler = await _schedulerFactory.GetScheduler();
             await scheduler.ScheduleJob(job, trigger);
         }
-       
         
         return Ok();
     }

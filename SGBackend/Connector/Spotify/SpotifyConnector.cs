@@ -84,6 +84,7 @@ public class SpotifyConnector : IContentConnector
                         .Build();
                 
                     var trigger = TriggerBuilder.Create()
+                        .WithIdentity(dbUser.Id.ToString(), "fetch")
                         .StartNow()
                         .Build();
 
@@ -120,6 +121,7 @@ public class SpotifyConnector : IContentConnector
                     .Build();
 
                 var trigger = TriggerBuilder.Create()
+                    .WithIdentity(dbUser.Id.ToString(), "fetch")
                     .StartNow()
                     .Build();
 

@@ -1,7 +1,10 @@
 ﻿using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Quartz;
+using Quartz.Impl.Matchers;
 using SGBackend;
+using SGBackend.Connector.Spotify;
 using SGBackend.Entities;
 using SGBackend.Provider;
 
@@ -14,6 +17,27 @@ public class DevTests : IClassFixture<WebApplicationFactory<Startup>>
     public DevTests(WebApplicationFactory<Startup> factory)
     {
         _factory = factory;
+    }
+
+    [Fact]
+    public async void TestMultipleRunningJobs()
+    {
+        using var scope = _factory.Services.CreateScope();
+
+        var  schedulerFactory = scope.ServiceProvider.GetService<ISchedulerFactory>();
+        
+        var job = JobBuilder.Create<SpotifyContinuousFetchJob>()
+            .UsingJobData("userId", "bok")
+            .UsingJobData("isInitialJob", true)
+            .Build();
+        
+        var trigger = TriggerBuilder.Create()
+            .WithIdentity("holas", "fetch")
+            .StartNow()
+            .Build();
+        
+        var scheduler = await schedulerFactory.GetScheduler();
+        await scheduler.ScheduleJob(job, trigger);
     }
 
     [Fact]
