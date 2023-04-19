@@ -75,7 +75,7 @@ public class AdminController  : ControllerBase
                 .Build();
                 
             var trigger = TriggerBuilder.Create()
-                .WithIdentity(user.Id.ToString(), "fetch")
+                .WithIdentity(user.Id.ToString(), "fetchInitial")
                 .StartNow()
                 .Build();
 

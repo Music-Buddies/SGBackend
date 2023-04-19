@@ -32,7 +32,7 @@ public class DevTests : IClassFixture<WebApplicationFactory<Startup>>
             .Build();
         
         var trigger = TriggerBuilder.Create()
-            .WithIdentity("holas", "fetch")
+            .WithIdentity("holas", "fetchInitial")
             .StartNow()
             .Build();
         

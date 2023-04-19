@@ -63,7 +63,6 @@ public class SpotifyContinuousFetchJob : IJob
             // user not active on spotify, reschedule for in a week
             var offset = DateTimeOffset.Now.AddMonths(1);
             var oneMonthTrigger = TriggerBuilder.Create()
-                .WithIdentity(userId.ToString(), "fetch")
                 .StartAt(offset)
                 .Build();
             _logger.LogInformation("sheduling for: " + offset);
@@ -80,7 +79,6 @@ public class SpotifyContinuousFetchJob : IJob
         var jobStartDate = DateTimeOffset.Now.Add(timeToProduceRecords);
         _logger.LogInformation("sheduling for: " + jobStartDate);
         var calculatedTrigger = TriggerBuilder.Create()
-            .WithIdentity(userId.ToString(), "fetch")
             .StartAt(jobStartDate)
             .Build();
 
