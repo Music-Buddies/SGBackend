@@ -52,12 +52,24 @@ public class UserController : ControllerBase
         await _dbContext.SaveChangesAsync();
         return Ok();
     }
+
+    [Authorize]
+    [HttpGet("profile-information/{guid}")]
+    public async Task<ProfileInformation> GetProfileInformationForUser(string guid)
+    {
+        return await GetProfileInformationGuid(Guid.Parse(guid));
+    }
     
     [Authorize]
     [HttpGet("profile-information")]
     public async Task<ProfileInformation> GetProfileInformation()
     {
         var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+        return await GetProfileInformationGuid(userId);
+    }
+
+    private async Task<ProfileInformation> GetProfileInformationGuid(Guid userId)
+    {
         var dbUser = await _dbContext.User.Include(u => u.Stats).Include(u => u.PlaybackRecords).FirstAsync(u => u.Id == userId);
 
         var earliestRecord = dbUser.PlaybackRecords.MinBy(r => r.PlayedAt);
