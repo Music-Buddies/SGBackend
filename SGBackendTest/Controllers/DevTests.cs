@@ -33,7 +33,6 @@ public class DevTests : IClassFixture<WebApplicationFactory<Startup>>
 
         var history = await connector.FetchAvailableContentHistory(sebi);
         
-     
     }
     
     [Fact]
