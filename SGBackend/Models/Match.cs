@@ -6,7 +6,7 @@ public class Match
 
     public string username { get; set; }
 
-    public string profileUrl { get; set; }
+    public string profileImage { get; set; }
 
     public long listenedTogetherSeconds { get; set; }
     public int rank { get; set; }

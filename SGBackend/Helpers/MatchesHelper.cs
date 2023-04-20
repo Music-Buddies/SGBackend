@@ -13,7 +13,7 @@ namespace SGBackend.Helpers
             {
                 username = m.Key.Name,
                 userId = m.Key.Id.ToString(),
-                profileUrl = m.Key.SpotifyProfileUrl,
+                profileImage = m.Key.SpotifyProfileUrl,
                 listenedTogetherSeconds = m.Sum(o => o.MutualPlaybackEntries.Sum(e => e.PlaybackSeconds)),
             }).OrderByDescending(m => m.listenedTogetherSeconds).Where(m => m.listenedTogetherSeconds != 0).ToArray();
 
