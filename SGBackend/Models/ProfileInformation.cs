@@ -1,3 +1,5 @@
+using SGBackend.Entities;
+
 namespace SGBackend.Models;
 
 public class ProfileInformation
@@ -11,4 +13,6 @@ public class ProfileInformation
     public long totalListenedSeconds { get; set; }
     
     public DateTime? latestFetch { get; set; }
+    
+    public Language language { get; set; }
 }

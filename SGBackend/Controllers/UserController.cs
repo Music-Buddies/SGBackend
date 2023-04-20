@@ -24,6 +24,19 @@ public class UserController : ControllerBase
     }
 
     [Authorize]
+    [HttpPatch("settings")]
+    public async Task<IActionResult> SetLanguage(UserSettings settings)
+    {
+        var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+        var dbUser = await _dbContext.User.Include(u => u.PlaybackRecords).FirstAsync(u => u.Id == userId);
+
+        if (settings.language.HasValue) dbUser.Language = settings.language.Value;
+
+        await _dbContext.SaveChangesAsync();
+        return Ok();
+    }
+
+    [Authorize]
     [HttpGet("spotify-token")]
     public async Task<Token?> GetSpotifyToken()
     {
@@ -79,7 +92,8 @@ public class UserController : ControllerBase
             trackingSince = earliestRecord?.PlayedAt,
             profileImage = dbUser.SpotifyProfileUrl,
             totalListenedSeconds = dbUser.PlaybackRecords.Sum(pr => pr.PlayedSeconds),
-            latestFetch = dbUser.Stats.LatestFetch
+            latestFetch = dbUser.Stats.LatestFetch,
+            language = dbUser.Language
         };
     }
 

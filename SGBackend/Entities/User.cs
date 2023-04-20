@@ -1,5 +1,11 @@
 ﻿namespace SGBackend.Entities;
 
+public enum Language
+{
+    Ger,
+    Eng
+}
+
 public class User : BaseEntity
 {
     public string Name { get; set; }
@@ -15,6 +21,9 @@ public class User : BaseEntity
     public List<PlaybackSummary> PlaybackSummaries { get; set; } = new();
 
     public Stats Stats { get; set; } = new();
+
+    // default locale is eng
+    public Language Language { get; set; } = Language.Eng;
 
     public ModelUser ToModelUser()
     {
