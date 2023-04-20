@@ -72,11 +72,23 @@ public class UserController : ControllerBase
     }
 
     [Authorize]
+    [HttpGet("spotify/personal-summary/{guid}")]
+    public async Task<MediaSummary[]> GetPersonalSummaryOfOtherUser(string guid)
+    {
+        return await GetSummaryForGuid(Guid.Parse(guid));
+    }
+    
+    [Authorize]
     [HttpGet("spotify/personal-summary")]
     public async Task<MediaSummary[]> GetPersonalSummary()
     {
         var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
 
+        return await GetSummaryForGuid(userId);
+    }
+
+    private async Task<MediaSummary[]> GetSummaryForGuid(Guid userId)
+    {
         var dbUser = await _dbContext.User
             .Include(u => u.PlaybackSummaries).ThenInclude(ps => ps.Medium).ThenInclude(m => m.Artists)
             .Include(u => u.PlaybackSummaries).ThenInclude(ps => ps.Medium).ThenInclude(m => m.Images)
