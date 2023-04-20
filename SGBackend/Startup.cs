@@ -205,7 +205,7 @@ public class Startup
             });
         }
         
-        // quartz init
+        // quartz & job init
         using (var scope = app.Services.CreateScope())
         {
             var services = scope.ServiceProvider;
@@ -216,14 +216,32 @@ public class Startup
             {
                 dbContext.States.Add(new State
                 {
-                    QuartzApplied = true
+                    QuartzApplied = true,
+                    GroupedFetchJobInstalled = true
                 });
                     
                 // first initialisations
+                
+                // quartz
                 var quartzTables = File.ReadAllText("generateQuartzTables.sql");
                 await dbContext.Database.ExecuteSqlRawAsync(quartzTables);
                     
                 await dbContext.SaveChangesAsync();
+
+                var schedulerFactory = scope.ServiceProvider.GetRequiredService<ISchedulerFactory>();
+                
+                // fetch job
+                var job = JobBuilder.Create<SpotifyGroupedFetchJob>()
+                    .Build();
+                
+                var trigger = TriggerBuilder.Create()
+                    .WithIdentity("groupedFetchJob", "fetch")
+                    .WithSchedule(SimpleScheduleBuilder.RepeatHourlyForever(4))
+                    .StartNow()
+                    .Build();
+
+                var scheduler = await schedulerFactory.GetScheduler();
+                await scheduler.ScheduleJob(job, trigger);
             }
         }
         

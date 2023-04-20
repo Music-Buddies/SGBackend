@@ -58,14 +58,16 @@ public class UserController : ControllerBase
     public async Task<ProfileInformation> GetProfileInformation()
     {
         var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
-        var dbUser = await _dbContext.User.Include(u => u.PlaybackRecords).FirstAsync(u => u.Id == userId);
+        var dbUser = await _dbContext.User.Include(u => u.Stats).Include(u => u.PlaybackRecords).FirstAsync(u => u.Id == userId);
 
         var earliestRecord = dbUser.PlaybackRecords.MinBy(r => r.PlayedAt);
         return new ProfileInformation
         {
             username = dbUser.Name,
             trackingSince = earliestRecord?.PlayedAt,
-            profileImage = dbUser.SpotifyProfileUrl
+            profileImage = dbUser.SpotifyProfileUrl,
+            totalListenedSeconds = dbUser.PlaybackRecords.Sum(pr => pr.PlayedSeconds),
+            latestFetch = dbUser.Stats.LatestFetch
         };
     }
 

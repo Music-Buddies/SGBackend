@@ -16,10 +16,7 @@ public class PlaybackSummary : BaseUserEntity
     public int TotalSeconds { get; set; }
 
     public DateTime LastListened { get; set; }
-
-    // TODO: replace with queue service
-    public bool NeedsCalculation { get; set; }
-
+    
     public MediaSummary ToMediaSummary()
     {
         return Medium.ToMediaSummary(TotalSeconds);

@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Newtonsoft.Json;
 using Quartz;
 using Quartz.Impl.Matchers;
 using SGBackend;
@@ -20,26 +21,21 @@ public class DevTests : IClassFixture<WebApplicationFactory<Startup>>
     }
 
     [Fact]
-    public async void TestMultipleRunningJobs()
+    public async void GetClaesHistory()
     {
+        
         using var scope = _factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<SgDbContext>();
+        var users = await context.User.ToArrayAsync();
+        var sebi = users.First(u => u.Name == "s.claes");
 
-        var  schedulerFactory = scope.ServiceProvider.GetService<ISchedulerFactory>();
+        var connector = scope.ServiceProvider.GetRequiredService<SpotifyConnector>();
+
+        var history = await connector.FetchAvailableContentHistory(sebi);
         
-        var job = JobBuilder.Create<SpotifyContinuousFetchJob>()
-            .UsingJobData("userId", "bok")
-            .UsingJobData("isInitialJob", true)
-            .Build();
-        
-        var trigger = TriggerBuilder.Create()
-            .WithIdentity("holas", "fetchInitial")
-            .StartNow()
-            .Build();
-        
-        var scheduler = await schedulerFactory.GetScheduler();
-        await scheduler.ScheduleJob(job, trigger);
+     
     }
-
+    
     [Fact]
     public async void TestConsumedTogetherTracks()
     {

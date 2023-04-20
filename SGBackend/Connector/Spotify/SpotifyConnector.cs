@@ -76,20 +76,6 @@ public class SpotifyConnector : IContentConnector
                     // set refresh token again
                     dbUser.SpotifyRefreshToken = context.RefreshToken;
                     await _dbContext.SaveChangesAsync();
-
-                    // reschedule continuous spotify fetch job
-                    var job = JobBuilder.Create<SpotifyContinuousFetchJob>()
-                        .UsingJobData("userId", dbUser.Id)
-                        .UsingJobData("isInitialJob", false)
-                        .Build();
-                
-                    var trigger = TriggerBuilder.Create()
-                        .WithIdentity(dbUser.Id.ToString(), "fetchInitial")
-                        .StartNow()
-                        .Build();
-
-                    var scheduler = await _schedulerFactory.GetScheduler();
-                    await scheduler.ScheduleJob(job, trigger);
                 }
                 else
                 {
@@ -113,20 +99,6 @@ public class SpotifyConnector : IContentConnector
                         ? profileUrl.Value
                         : "https://miro.medium.com/max/659/1*8xraf6eyaXh-myNXOXkqLA.jpeg"
                 });
-
-                // schedule continuous spotify fetch job
-                var job = JobBuilder.Create<SpotifyContinuousFetchJob>()
-                    .UsingJobData("userId", dbUser.Id)
-                    .UsingJobData("isInitialJob", true)
-                    .Build();
-
-                var trigger = TriggerBuilder.Create()
-                    .WithIdentity(dbUser.Id.ToString(), "fetchInitial")
-                    .StartNow()
-                    .Build();
-
-                var scheduler = await _schedulerFactory.GetScheduler();
-                await scheduler.ScheduleJob(job, trigger);
             }
 
             return new UserLoggedInResult

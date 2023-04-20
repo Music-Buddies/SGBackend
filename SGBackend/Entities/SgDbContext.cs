@@ -17,6 +17,8 @@ public class SgDbContext : DbContext
     public DbSet<User> User { get; set; }
 
     public DbSet<Medium> Media { get; set; }
+    
+    public DbSet<Stats> Stats { get; set; }
 
     public DbSet<PlaybackRecord> PlaybackRecords { get; set; }
 

@@ -14,6 +14,8 @@ public class User : BaseEntity
 
     public List<PlaybackSummary> PlaybackSummaries { get; set; } = new();
 
+    public Stats Stats { get; set; } = new();
+
     public ModelUser ToModelUser()
     {
         return new ModelUser

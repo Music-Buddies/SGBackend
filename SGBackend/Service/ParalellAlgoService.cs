@@ -27,7 +27,6 @@ public class ParalellAlgoService
         using (var scope = _scopeFactory.CreateScope())
         {
             var dbContext = scope.ServiceProvider.GetRequiredService<SgDbContext>();
-            var connector = scope.ServiceProvider.GetRequiredService<SpotifyConnector>();
 
             var summaryGuids = new List<Guid>();
             
@@ -95,7 +94,6 @@ public class ParalellAlgoService
                         // add sum of records on top and update last record timestamp
                         existingSummary.TotalSeconds += newInsertedRecordGrouping.Sum(r => r.PlayedSeconds);
                         existingSummary.LastListened = newInsertedRecordGrouping.MaxBy(r => r.PlayedAt).PlayedAt;
-                        existingSummary.NeedsCalculation = true;
                         upsertedSummaries.Add(existingSummary);
                     }
                     else
@@ -106,7 +104,6 @@ public class ParalellAlgoService
                             MediumId = newInsertedRecordGrouping.Key,
                             LastListened = newInsertedRecordGrouping.MaxBy(r => r.PlayedAt).PlayedAt,
                             TotalSeconds = newInsertedRecordGrouping.Sum(r => r.PlayedSeconds),
-                            NeedsCalculation = true
                         };
                         // just dump new entry
                         await dbContext.PlaybackSummaries.AddAsync(newSummary);
@@ -313,8 +310,17 @@ public class ParalellAlgoService
                 var user = await dbContext.User.Include(u => u.PlaybackSummaries).Include(u => u.PlaybackRecords)
                     .FirstAsync(u => u.Id == userId);
 
+                
+                
+                
                 // 2 in one
                 var records = history.GetPlaybackRecords(existingSpotifyMedia, user);
+
+                if (user.PlaybackRecords.Any())
+                {
+                    var latestRecordedPlayedAt = user.PlaybackRecords.Select(pr => pr.PlayedAt).Max();
+                    records = records.Where(r => r.PlayedAt > latestRecordedPlayedAt).ToList();
+                }
 
                 await dbContext.PlaybackRecords.AddRangeAsync(records);
                 await dbContext.SaveChangesAsync();

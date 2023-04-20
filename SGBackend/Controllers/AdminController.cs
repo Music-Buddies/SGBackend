@@ -32,7 +32,7 @@ public class AdminController  : ControllerBase
     }
     
     //[Authorize]
-    //[HttpPost("importUsers")]
+    [HttpPost("importUsers")]
     public async Task<IActionResult> ImportUsers(ExportContainer exportContainer)
     {
         // import missing media
@@ -64,24 +64,16 @@ public class AdminController  : ControllerBase
         // recalc 
         await _algoService.UpdateAll();
         
-        // shedule jobs
-        foreach (var user in dbUsers)
-        {
-            // start jobs
-            // reschedule continuous spotify fetch job
-            var job = JobBuilder.Create<SpotifyContinuousFetchJob>()
-                .UsingJobData("userId", user.Id)
-                .UsingJobData("isInitialJob", true)
-                .Build();
+        // trigger fetch job once
+        var job = JobBuilder.Create<SpotifyGroupedFetchJob>()
+            .Build();
                 
-            var trigger = TriggerBuilder.Create()
-                .WithIdentity(user.Id.ToString(), "fetchInitial")
-                .StartNow()
-                .Build();
+        var trigger = TriggerBuilder.Create()
+            .StartNow()
+            .Build();
 
-            var scheduler = await _schedulerFactory.GetScheduler();
-            await scheduler.ScheduleJob(job, trigger);
-        }
+        var scheduler = await _schedulerFactory.GetScheduler();
+        await scheduler.ScheduleJob(job, trigger);
         
         return Ok();
     }
