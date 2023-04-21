@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authentication.OAuth;
@@ -6,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.OpenApi.Models;
 using MySql.EntityFrameworkCore.Extensions;
+using Newtonsoft.Json.Converters;
 using Quartz;
 using SecretsProvider;
 using SGBackend.Connector;
@@ -156,6 +158,8 @@ public class Startup
                 }
             });
         });
+        
+        
     }
 
     public async Task Configure(WebApplication app)

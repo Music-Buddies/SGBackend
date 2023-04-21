@@ -31,8 +31,9 @@ public class AdminController  : ControllerBase
         _schedulerFactory = schedulerFactory;
     }
     
+    
     //[Authorize]
-    //[HttpPost("importUsers")]
+    [HttpPost("importUsers")]
     public async Task<IActionResult> ImportUsers(ExportContainer exportContainer)
     {
         // import missing media
@@ -77,6 +78,7 @@ public class AdminController  : ControllerBase
         
         return Ok();
     }
+    
 
     [Authorize]
     [HttpGet("exportUsers")]
