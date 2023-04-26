@@ -117,11 +117,6 @@ public class UserController : ControllerBase
 
     private async Task<RecommendedMedia[]> GetSummaryForGuid(Guid userId, int? limit)
     {
-        var dbUser = await _dbContext.User
-            .Include(u => u.PlaybackSummaries).ThenInclude(ps => ps.Medium).ThenInclude(m => m.Artists)
-            .Include(u => u.PlaybackSummaries).ThenInclude(ps => ps.Medium).ThenInclude(m => m.Images)
-            .FirstAsync(u => u.Id == userId);
-
         var summariesQuery = _dbContext.PlaybackSummaries
             .Include(s => s.Medium).ThenInclude(m => m.Artists)
             .Include(ps => ps.Medium).ThenInclude(m => m.Images)
