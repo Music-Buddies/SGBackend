@@ -1,7 +1,9 @@
 using System.Text;
 using Microsoft.Net.Http.Headers;
 using Refit;
+using SecretsProvider;
 using SGBackend.Connector.Spotify;
+using SGBackend.Models;
 
 namespace SGBackend.Connector;
 
@@ -14,6 +16,8 @@ public static class ExternalApiClientExtension
 
     private static void AddSpotifyApi(IServiceCollection serviceCollection)
     {
+        var secretsProvider = serviceCollection.BuildServiceProvider().GetRequiredService<ISecretsProvider>();
+        var secrets = secretsProvider.GetSecret<Secrets>();
         serviceCollection.AddRefitClient<ISpotifyApi>().ConfigureHttpClient(httpClient =>
         {
             httpClient.BaseAddress = new Uri("https://api.spotify.com/");
@@ -22,7 +26,7 @@ public static class ExternalApiClientExtension
         {
             httpClient.BaseAddress = new Uri("https://accounts.spotify.com/");
             httpClient.DefaultRequestHeaders.Add(HeaderNames.Authorization,
-                "Basic " + Base64Encode("de22eb2cc8c9478aa6f81f401bcaa23a:03e25493374146c987ee581f6f64ad1f"));
+                "Basic " + Base64Encode($"{secrets.SpotifyClientId}:{secrets.SpotifyClientSecret}"));
         });
     }
 
