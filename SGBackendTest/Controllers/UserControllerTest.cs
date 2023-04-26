@@ -43,7 +43,7 @@ public class UserControllerTest : IClassFixture<WebApplicationFactory<Startup>>
     public async void GetPersonalSummary()
     {
         var client = await TestSetupAsync();
-        var response = await client.GetAsync("/user/spotify/personal-summary");
+        var response = await client.GetAsync("/user/spotify/personal-summary?limit=10");
         var mediaSummariesArray = await response.Content.ReadFromJsonAsync<RecommendedMedia[]>();
 
         Assert.NotEmpty(mediaSummariesArray);
@@ -65,7 +65,7 @@ public class UserControllerTest : IClassFixture<WebApplicationFactory<Startup>>
     public async void GetMatches()
     {
         var client = await TestSetupAsync();
-        var response = await client.GetAsync("/user/matches");
+        var response = await client.GetAsync("/user/matches?limit=10");
         var matchesArray = await response.Content.ReadFromJsonAsync<Match[]>();
 
         Assert.NotEmpty(matchesArray);

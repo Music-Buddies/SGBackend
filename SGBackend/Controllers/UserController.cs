@@ -101,44 +101,73 @@ public class UserController : ControllerBase
 
     [Authorize]
     [HttpGet("spotify/personal-summary/{guid}")]
-    public async Task<RecommendedMedia[]> GetPersonalSummaryOfOtherUser(string guid)
+    public async Task<RecommendedMedia[]> GetPersonalSummaryOfOtherUser(string guid, int? limit)
     {
-        return await GetSummaryForGuid(Guid.Parse(guid));
+        return await GetSummaryForGuid(Guid.Parse(guid), limit);
     }
 
     [Authorize]
     [HttpGet("spotify/personal-summary")]
-    public async Task<RecommendedMedia[]> GetPersonalSummary()
+    public async Task<RecommendedMedia[]> GetPersonalSummary(int? limit)
     {
         var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
 
-        return await GetSummaryForGuid(userId);
+        return await GetSummaryForGuid(userId, limit);
     }
 
-    private async Task<RecommendedMedia[]> GetSummaryForGuid(Guid userId)
+    private async Task<RecommendedMedia[]> GetSummaryForGuid(Guid userId, int? limit)
     {
         var dbUser = await _dbContext.User
             .Include(u => u.PlaybackSummaries).ThenInclude(ps => ps.Medium).ThenInclude(m => m.Artists)
             .Include(u => u.PlaybackSummaries).ThenInclude(ps => ps.Medium).ThenInclude(m => m.Images)
             .FirstAsync(u => u.Id == userId);
 
-        return dbUser.PlaybackSummaries.Select(ps => ps.Medium.ToRecommendedMedia(ps.TotalSeconds))
+        var summariesQuery = _dbContext.PlaybackSummaries
+            .Include(s => s.Medium).ThenInclude(m => m.Artists)
+            .Include(ps => ps.Medium).ThenInclude(m => m.Images)
+            .OrderByDescending(ps => ps.TotalSeconds)
+            .Where(s => s.UserId == userId);
+
+        PlaybackSummary[] summaries;
+        if (limit.HasValue)
+        {
+            summaries = await summariesQuery.Take(limit.Value).ToArrayAsync();
+        }
+        else
+        {
+            summaries = await summariesQuery.ToArrayAsync();
+        }
+        
+        return summaries.Select(ps => ps.Medium.ToRecommendedMedia(ps.TotalSeconds))
             .OrderByDescending(ms => ms.listenedSeconds)
             .ToArray();
     }
 
     [Authorize]
     [HttpGet("matches")]
-    public async Task<Match[]> GetMatches()
+    public async Task<Match[]> GetMatches(int? limit)
     {
         var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
         var dbUser = await _dbContext.User.FirstAsync(u => u.Id == userId);
 
-        var matches = await _dbContext.MutualPlaybackOverviews
+        var query = _dbContext.MutualPlaybackOverviews
             .Include(m => m.User1)
             .Include(m => m.User2)
             .Include(m => m.MutualPlaybackEntries)
-            .Where(m => m.User1 == dbUser || m.User2 == dbUser).ToArrayAsync();
+            .OrderByDescending(m =>
+                m.MutualPlaybackEntries.Sum(e => Math.Min(e.PlaybackSecondsUser1, e.PlaybackSecondsUser2)))
+            .Where(m => m.User1 == dbUser || m.User2 == dbUser);
+        
+        MutualPlaybackOverview[] matches;
+
+        if (limit.HasValue)
+        {
+            matches = await query.Take(limit.Value).ToArrayAsync();
+        }
+        else
+        {
+            matches = await query.ToArrayAsync();
+        }
 
         return MatchesHelper.CreateMatchesArray(matches.GroupBy(m => m.GetOtherUser(dbUser)));
     }
