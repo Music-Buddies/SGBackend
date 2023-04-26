@@ -27,19 +27,13 @@ public class ParalellAlgoService
         using (var scope = _scopeFactory.CreateScope())
         {
             var dbContext = scope.ServiceProvider.GetRequiredService<SgDbContext>();
-
-            var summaryGuids = new List<Guid>();
+            
             
             var users = await dbContext.User.Include(u => u.PlaybackRecords).ThenInclude(pbr => pbr.Medium).ToArrayAsync();
             
             foreach (var user in users)
             {
                 await ProcessImport(user.Id, user.PlaybackRecords.ToList());
-            }
-
-            foreach (var user in users)
-            {
-                await UpdateMutualPlaybackOverviews(user.Id, summaryGuids);
             }
         }
     }
@@ -226,7 +220,7 @@ public class ParalellAlgoService
 
     public async Task ProcessImport(Guid userId, List<PlaybackRecord> records)
     {
-    // insert records and update summaries, locked by user
+        // insert records and update summaries, locked by user
         SemaphoreSlim userSlim;
         // get / create lock for user
         lock (_userSlims)
