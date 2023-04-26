@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Org.BouncyCastle.Utilities;
 using Quartz;
+using SecretsProvider;
 using SGBackend.Connector.Spotify;
 using SGBackend.Entities;
 using SGBackend.Models;
@@ -23,19 +24,30 @@ public class AdminController  : ControllerBase
     
     private readonly ISchedulerFactory _schedulerFactory;
 
-    public AdminController(ParalellAlgoService algoService, SgDbContext dbContext, UserService userService, ISchedulerFactory schedulerFactory)
+    private readonly ISecretsProvider _secretsProvider;
+
+    public AdminController(ParalellAlgoService algoService, SgDbContext dbContext, UserService userService, ISchedulerFactory schedulerFactory, ISecretsProvider secretsProvider)
     {
         _algoService = algoService;
         _dbContext = dbContext;
         _userService = userService;
         _schedulerFactory = schedulerFactory;
+        _secretsProvider = secretsProvider;
+    }
+
+    private bool AdminTokenValid(string adminToken)
+    {
+        return _secretsProvider.GetSecret<Secrets>().AdminToken == adminToken;
     }
     
-    
-    //[Authorize]
     [HttpPost("importUsers")]
     public async Task<IActionResult> ImportUsers(ExportContainer exportContainer)
     {
+        if (!AdminTokenValid(exportContainer.adminToken))
+        {
+            return Unauthorized();
+        }
+        
         // import missing media
         var existingMediaUrls = await _dbContext.Media.Select(m => m.LinkToMedium).ToArrayAsync();
 
@@ -79,16 +91,10 @@ public class AdminController  : ControllerBase
         return Ok();
     }
     
-
-    [Authorize]
-    [HttpGet("exportUsers")]
-    public async Task<ActionResult<ExportContainer>> ExportUsers()
+    [HttpPost("exportUsers")]
+    public async Task<ActionResult<ExportContainer>> ExportUsers(string adminToken)
     {
-        var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
-        var dbUser = await _dbContext.User.Include(u => u.PlaybackRecords).FirstAsync(u => u.Id == userId);
-
-        var allowedUsers = new List<string>() { "https://open.spotify.com/user/31ahh7pd3xdhtwipis3fprv3vp24", "https://open.spotify.com/user/4wfpnlvgdiwp1jfde3a80n9ml"};
-        if (!allowedUsers.Contains(dbUser.SpotifyId))
+        if (!AdminTokenValid(adminToken))
         {
             return Unauthorized();
         }
@@ -110,6 +116,7 @@ public class AdminController  : ControllerBase
 
 public class ExportContainer
 {
+    public string adminToken { get; set; }
     public List<ExportUser> users { get; set; }
     
     public List<ExportMedium> media { get; set; }
