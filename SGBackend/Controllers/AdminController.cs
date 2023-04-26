@@ -74,10 +74,12 @@ public class AdminController  : ControllerBase
         await _dbContext.User.AddRangeAsync();
         await _dbContext.SaveChangesAsync();
 
-        // recalc 
-        await _algoService.UpdateAll();
+        foreach (var dbUser in dbUsers)
+        {
+            await _algoService.ProcessImport(dbUser.Id);
+        }
         
-        // trigger fetch job once
+        // trigger fetch job once, to set last fetched timestamp for users
         var job = JobBuilder.Create<SpotifyGroupedFetchJob>()
             .Build();
                 
