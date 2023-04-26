@@ -25,12 +25,16 @@ public class UserController : ControllerBase
 
     [Authorize]
     [HttpPatch("settings")]
-    public async Task<IActionResult> SetLanguage(UserSettings settings)
+    public async Task<IActionResult> PatchSettings(UserSettings settings)
     {
         var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
         var dbUser = await _dbContext.User.Include(u => u.PlaybackRecords).FirstAsync(u => u.Id == userId);
-
-        if (settings.language.HasValue) dbUser.Language = settings.language.Value;
+        
+        if (settings.language != null)
+        {
+            Enum.TryParse(settings.language, out Language lang);
+            dbUser.Language = lang;
+        }
 
         await _dbContext.SaveChangesAsync();
         return Ok();

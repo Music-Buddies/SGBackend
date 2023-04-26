@@ -1,8 +1,9 @@
-﻿using SGBackend.Entities;
+﻿using System.Text.Json.Serialization;
+using SGBackend.Entities;
 
 namespace SGBackend.Models;
 
 public class UserSettings
 {
-    public Language? language { get; set; }
+    public string? language { get; set; }
 }

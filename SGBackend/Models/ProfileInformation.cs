@@ -1,5 +1,4 @@
 using System.Text.Json.Serialization;
-using Newtonsoft.Json.Converters;
 using SGBackend.Entities;
 
 namespace SGBackend.Models;
@@ -16,6 +15,6 @@ public class ProfileInformation
     
     public DateTime? latestFetch { get; set; }
     
-    [Newtonsoft.Json.JsonConverter(typeof(JsonStringEnumConverter))]
+    [JsonConverter(typeof(JsonStringEnumConverter))]
     public Language language { get; set; }
 }

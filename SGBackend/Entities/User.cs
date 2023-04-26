@@ -2,8 +2,8 @@
 
 public enum Language
 {
-    Ger,
-    Eng
+    de,
+    en
 }
 
 public class User : BaseEntity
@@ -23,7 +23,7 @@ public class User : BaseEntity
     public Stats Stats { get; set; } = new();
 
     // default locale is eng
-    public Language Language { get; set; } = Language.Eng;
+    public Language Language { get; set; } = Language.en;
 
     public ModelUser ToModelUser()
     {
