@@ -28,14 +28,13 @@ public class Medium : BaseEntity
 
     public string ReleaseDate { get; set; }
     
-    public MediaSummary ToMediaSummary(long totalSeconds)
+    public MediaSummary ToMediaSummary()
     {
         return new MediaSummary
         {
             albumImages = SortBySize(Images),
             allArtists = Artists.Select(a => a.Name).ToArray(),
             explicitFlag = ExplicitContent,
-            listenedSeconds = totalSeconds,
             songTitle = Title,
             // https://open.spotify.com/track/4EWCNWgDS8707fNSZ1oaA5
             linkToMedia = $"spotify:track:{LinkToMedium.Split("/").Last()}",

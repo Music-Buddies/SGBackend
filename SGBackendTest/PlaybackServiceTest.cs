@@ -160,7 +160,7 @@ public class PlaybackServiceTest : IClassFixture<PlaybackServiceFixture>
             var sumUser2 = recordsUser2.Sum(r => r.PlayedSeconds);
 
             var listenedTogether = Math.Min(sumUser1, sumUser2);
-            Assert.Equal(listenedTogether, mutualPlaybackEntry.PlaybackSeconds);
+            Assert.Equal(listenedTogether, Math.Min(mutualPlaybackEntry.PlaybackSecondsUser2, mutualPlaybackEntry.PlaybackSecondsUser1));
         }
     }
 }

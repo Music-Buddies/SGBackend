@@ -20,23 +20,6 @@ public class ParalellAlgoService
     }
 
     private readonly SemaphoreSlim _mediaGlobalLock = new SemaphoreSlim(1, 1);
-
-    
-    public async Task UpdateAll()
-    {
-        using (var scope = _scopeFactory.CreateScope())
-        {
-            var dbContext = scope.ServiceProvider.GetRequiredService<SgDbContext>();
-            
-            
-            var users = await dbContext.User.Include(u => u.PlaybackRecords).ThenInclude(pbr => pbr.Medium).ToArrayAsync();
-            
-            foreach (var user in users)
-            {
-                await ProcessImport(user.Id, user.PlaybackRecords.ToList());
-            }
-        }
-    }
     
     private async Task UpdateMedia(SpotifyListenHistory history)
     {
@@ -129,12 +112,12 @@ public class ParalellAlgoService
         {
             var dbContext = scope.ServiceProvider.GetRequiredService<SgDbContext>();
             var user = await dbContext.User.FirstAsync(u => u.Id == userId);
-            var upsertedSummaries =
+            var upsertedSummariesOfUser =
                 await dbContext.PlaybackSummaries.Include(ps => ps.Medium)
                     .Where(ps => summaryIds.Contains(ps.Id))
                     .ToArrayAsync();
 
-            var affectedMedia = upsertedSummaries.Select(s => s.Medium).Distinct().ToArray();
+            var affectedMedia = upsertedSummariesOfUser.Select(s => s.Medium).Distinct().ToArray();
 
             var otherPlaybackSummaries =
                 await dbContext.PlaybackSummaries
@@ -142,7 +125,7 @@ public class ParalellAlgoService
                     .Include(ps => ps.User)
                     .Where(ps => affectedMedia.Contains(ps.Medium) && ps.User != user).ToListAsync();
 
-            var otherSummariesByMedia = otherPlaybackSummaries.Except(upsertedSummaries).GroupBy(ps => ps.Medium)
+            var otherSummariesByMedia = otherPlaybackSummaries.Except(upsertedSummariesOfUser).GroupBy(ps => ps.Medium)
                 .ToDictionary(g => g.Key, g => g.ToList());
 
             var playbackOverviews = await dbContext.MutualPlaybackOverviews
@@ -155,7 +138,7 @@ public class ParalellAlgoService
             var overviewsByOtherUser =
                 playbackOverviews.ToDictionary(lts => lts.GetOtherUser(user), summary => summary);
 
-            foreach (var upsertedSummary in upsertedSummaries)
+            foreach (var upsertedSummary in upsertedSummariesOfUser)
             {
                 otherSummariesByMedia.TryGetValue(upsertedSummary.Medium, out var otherSummaries);
                 // there might just be no other summaries for this medium yet
@@ -167,29 +150,29 @@ public class ParalellAlgoService
 
                     var mutualPlaybackEntry = playbackOverview.MutualPlaybackEntries
                         .FirstOrDefault(e => e.Medium == otherSummary.Medium);
+
                     
-                    /*
                     long playbackSecondsUser1;
                     long playbackSecondsUser2;
-                    if (otherSummary.User == mutualPlaybackEntry.MutualPlaybackOverview.User1 && upsertedSummary.User == mutualPlaybackEntry.MutualPlaybackOverview.User2)
+                    
+                    if (playbackOverview.User1 == user)
                     {
-                        playbackSecondsUser1 = otherSummary.TotalSeconds;
-                        playbackSecondsUser2 = upsertedSummary.TotalSeconds;
-                    }
-                    else
-                    {
+                        // the current user, of which all upserted summaries are from, is user1 of the overview (since they are shared objects)
                         playbackSecondsUser1 = upsertedSummary.TotalSeconds;
                         playbackSecondsUser2 = otherSummary.TotalSeconds;
                     }
-                    */
-                    
+                    else
+                    {
+                        // the other way around
+                        playbackSecondsUser2 = upsertedSummary.TotalSeconds;
+                        playbackSecondsUser1 = otherSummary.TotalSeconds;
+                    }
+
                     if (mutualPlaybackEntry != null)
                     {
                         // update seconds
-                        mutualPlaybackEntry.PlaybackSeconds =
-                            Math.Min(otherSummary.TotalSeconds, upsertedSummary.TotalSeconds);
-                        //mutualPlaybackEntry.PlaybackSecondsUser1 = playbackSecondsUser1;
-                        //mutualPlaybackEntry.PlaybackSecondsUser2 = playbackSecondsUser2;
+                        mutualPlaybackEntry.PlaybackSecondsUser1 = playbackSecondsUser1;
+                        mutualPlaybackEntry.PlaybackSecondsUser2 = playbackSecondsUser2;
                     }
                     else
                     {
@@ -197,15 +180,11 @@ public class ParalellAlgoService
                         playbackOverview.MutualPlaybackEntries.Add(new MutualPlaybackEntry
                         {
                             Medium = upsertedSummary.Medium,
-                            PlaybackSeconds = Math.Min(otherSummary.TotalSeconds, upsertedSummary.TotalSeconds),
-                            //PlaybackSecondsUser1 = playbackSecondsUser1,
-                            //PlaybackSecondsUser2 = playbackSecondsUser2,
+                            PlaybackSecondsUser1 = playbackSecondsUser1,
+                            PlaybackSecondsUser2 = playbackSecondsUser2,
                             MutualPlaybackOverview = playbackOverview
                         });
                     }
-                        
-                        
-                      
                 }
             }
 
@@ -218,7 +197,7 @@ public class ParalellAlgoService
         }
     }
 
-    public async Task ProcessImport(Guid userId, List<PlaybackRecord> records)
+    public async Task ProcessImport(Guid userId)
     {
         // insert records and update summaries, locked by user
         SemaphoreSlim userSlim;
@@ -244,7 +223,7 @@ public class ParalellAlgoService
                 var user = await dbContext.User.Include(u => u.PlaybackSummaries).Include(u => u.PlaybackRecords)
                     .FirstAsync(u => u.Id == userId);
                 
-                summaries = await ProcessRecordsUpdateSummaries(userId, records, user.PlaybackSummaries);
+                summaries = await ProcessRecordsUpdateSummaries(userId, user.PlaybackRecords, user.PlaybackSummaries);
             }
             
         }

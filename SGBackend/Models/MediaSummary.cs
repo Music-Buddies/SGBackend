@@ -11,7 +11,9 @@ public class MediaSummary
     public bool explicitFlag { get; set; }
 
     public long listenedSeconds { get; set; }
-
+    
+    public long? listenedSecondsMatch { get; set; }
+    
     public MediumImage[] albumImages { get; set; }
 
     public string linkToMedia { get; set; }

@@ -167,7 +167,22 @@ public class UserController : ControllerBase
             .ThenInclude(m => m.Images)
             .FirstAsync(m => (m.User1 == loggedInUser && m.User2 == requestedUser) || (m.User2 == loggedInUser && m.User1 == requestedUser));
 
-        return match.MutualPlaybackEntries.Select(m => m.Medium.ToMediaSummary(m.PlaybackSeconds)).OrderByDescending(ms => ms.listenedSeconds).ToArray();
+        return match.MutualPlaybackEntries.Select(m =>
+        {
+            var summary = m.Medium.ToMediaSummary();
+            if (match.User1 == loggedInUser)
+            {
+                summary.listenedSeconds = m.PlaybackSecondsUser1;
+                summary.listenedSecondsMatch = m.PlaybackSecondsUser2;
+            }
+            else
+            {
+                summary.listenedSeconds = m.PlaybackSecondsUser2;
+                summary.listenedSecondsMatch = m.PlaybackSecondsUser1;
+            }
+            
+            return summary;
+        }).OrderByDescending(ms => ms.listenedSeconds).ToArray();
     }
 
     [Authorize]

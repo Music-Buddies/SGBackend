@@ -19,6 +19,8 @@ public class PlaybackSummary : BaseUserEntity
     
     public MediaSummary ToMediaSummary()
     {
-        return Medium.ToMediaSummary(TotalSeconds);
+        var summary = Medium.ToMediaSummary();
+        summary.listenedSeconds = TotalSeconds;
+        return summary;
     }
 }
