@@ -1,7 +1,4 @@
-﻿using System.Text.Json.Serialization;
-using SGBackend.Entities;
-
-namespace SGBackend.Models;
+﻿namespace SGBackend.Models;
 
 public class UserSettings
 {

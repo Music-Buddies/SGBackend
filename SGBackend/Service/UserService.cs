@@ -4,10 +4,11 @@ using SGBackend.Entities;
 namespace SGBackend.Service;
 
 /// <summary>
-/// needs to be registered as singleton
+///     needs to be registered as singleton
 /// </summary>
 public class UserService
 {
+    private readonly SemaphoreSlim _addUserSlim = new(1, 1);
     private readonly IServiceScopeFactory _scopeFactory;
 
     public UserService(IServiceScopeFactory scopeFactory)
@@ -15,8 +16,6 @@ public class UserService
         _scopeFactory = scopeFactory;
     }
 
-    private readonly SemaphoreSlim _addUserSlim = new(1, 1);
-    
     public async Task<User> AddUser(User user)
     {
         await _addUserSlim.WaitAsync();

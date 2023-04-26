@@ -6,11 +6,11 @@ namespace SGBackend.Entities;
 public class MutualPlaybackOverview : BaseEntity
 {
     public User User1 { get; set; }
-    
+
     public Guid User1Id { get; set; }
 
     public User User2 { get; set; }
-    
+
     public Guid User2Id { get; set; }
 
     public List<MutualPlaybackEntry> MutualPlaybackEntries { get; set; } = new();

@@ -1,12 +1,10 @@
+using System.Net.Http.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using SGBackend;
 using SGBackend.Models;
 using SGBackend.Provider;
 using SGBackend.Service;
-using System.Net.Http.Json;
-using Microsoft.EntityFrameworkCore;
-using SGBackend.Entities;
 
 namespace SGBackendTest.Controllers;
 
@@ -18,7 +16,7 @@ public class UserControllerTest : IClassFixture<WebApplicationFactory<Startup>>
     {
         _factory = factory;
     }
-    
+
 
     [Fact]
     public async void SpotifyDisconnect()
@@ -104,7 +102,6 @@ public class UserControllerTest : IClassFixture<WebApplicationFactory<Startup>>
         Assert.NotNull(mediaSummariesArray[0].songTitle);
     }
 
-   
 
     private async Task<HttpClient> TestSetupAsync()
     {

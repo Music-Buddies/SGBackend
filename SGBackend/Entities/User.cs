@@ -58,12 +58,11 @@ public class ExportUser
     public string? SpotifyProfileUrl { get; set; }
 
     public string? SpotifyRefreshToken { get; set; }
-    
+
     public List<ExportPlaybackRecord> PlaybackRecords { get; set; } = new();
 
     public User ToUser(Dictionary<string, Guid> mediumLinkMap)
     {
-        
         return new User
         {
             SpotifyId = SpotifyId,

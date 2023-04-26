@@ -1,14 +1,13 @@
 using Microsoft.EntityFrameworkCore;
 using SecretsProvider;
 using SGBackend.Models;
-using SGBackend.Provider;
 
 namespace SGBackend.Entities;
 
 public class SgDbContext : DbContext
-{    
-    
+{
     private readonly ISecretsProvider _secretsProvider;
+
     public SgDbContext(ISecretsProvider secretsProvider)
     {
         _secretsProvider = secretsProvider;
@@ -17,7 +16,7 @@ public class SgDbContext : DbContext
     public DbSet<User> User { get; set; }
 
     public DbSet<Medium> Media { get; set; }
-    
+
     public DbSet<Stats> Stats { get; set; }
 
     public DbSet<PlaybackRecord> PlaybackRecords { get; set; }
@@ -27,13 +26,12 @@ public class SgDbContext : DbContext
     public DbSet<MediumImage> Images { get; set; }
 
     public DbSet<Artist> Artists { get; set; }
-    
+
     public DbSet<State> States { get; set; }
 
     public DbSet<MutualPlaybackOverview> MutualPlaybackOverviews { get; set; }
 
     public DbSet<MutualPlaybackEntry> MutualPlaybackEntries { get; set; }
-
 
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)

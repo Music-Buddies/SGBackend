@@ -1,9 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Newtonsoft.Json;
-using Quartz;
-using Quartz.Impl.Matchers;
 using SGBackend;
 using SGBackend.Connector.Spotify;
 using SGBackend.Entities;
@@ -23,7 +20,6 @@ public class DevTests : IClassFixture<WebApplicationFactory<Startup>>
     [Fact]
     public async void GetClaesHistory()
     {
-        
         using var scope = _factory.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<SgDbContext>();
         var users = await context.User.ToArrayAsync();
@@ -32,14 +28,13 @@ public class DevTests : IClassFixture<WebApplicationFactory<Startup>>
         var connector = scope.ServiceProvider.GetRequiredService<SpotifyConnector>();
 
         var history = await connector.FetchAvailableContentHistory(sebi);
-        
     }
-    
+
     [Fact]
     public async void TestConsumedTogetherTracks()
     {
         using var scope = _factory.Services.CreateScope();
-        
+
         var scopedJwtProvider = scope.ServiceProvider.GetService<JwtProvider>();
         var context = scope.ServiceProvider.GetService<SgDbContext>();
         var users = await context.User.ToArrayAsync();
@@ -51,12 +46,12 @@ public class DevTests : IClassFixture<WebApplicationFactory<Startup>>
         var response = await client.GetAsync($"/user/matches/{tobe.Id.ToString()}/together-consumed/tracks");
         var body = await response.Content.ReadAsStringAsync();
     }
-    
+
     [Fact]
     public async void TestMatchesNotShowing()
     {
         using var scope = _factory.Services.CreateScope();
-        
+
         var scopedJwtProvider = scope.ServiceProvider.GetService<JwtProvider>();
         var context = scope.ServiceProvider.GetService<SgDbContext>();
         var users = await context.User.ToArrayAsync();

@@ -7,9 +7,9 @@ namespace SGBackend.Entities;
 public class PlaybackRecord : BaseUserEntity
 {
     public Medium Medium { get; set; }
-    
+
     public Guid MediumId { get; set; }
-    
+
     public DateTime PlayedAt { get; set; }
 
     public int PlayedSeconds { get; set; }
@@ -25,13 +25,13 @@ public class PlaybackRecord : BaseUserEntity
     }
 }
 
-public class ExportPlaybackRecord {
-    
+public class ExportPlaybackRecord
+{
     /// <summary>
-    /// unique key
+    ///     unique key
     /// </summary>
     public string LinkToMedium { get; set; }
-    
+
     public DateTime PlayedAt { get; set; }
 
     public int PlayedSeconds { get; set; }
@@ -45,5 +45,4 @@ public class ExportPlaybackRecord {
             PlayedAt = PlayedAt
         };
     }
-    
 }

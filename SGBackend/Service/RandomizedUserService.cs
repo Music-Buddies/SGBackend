@@ -13,13 +13,14 @@ public class RandomizedUserService
     private static readonly Random rnd = new();
 
     private readonly SgDbContext _dbContext;
-    
-    private readonly UserService _userService;
 
     private readonly ParalellAlgoService _paralellAlgoService;
 
+    private readonly UserService _userService;
 
-    public RandomizedUserService(SgDbContext dbContext, UserService userService, ParalellAlgoService paralellAlgoService)
+
+    public RandomizedUserService(SgDbContext dbContext, UserService userService,
+        ParalellAlgoService paralellAlgoService)
     {
         _dbContext = dbContext;
         _userService = userService;
@@ -77,11 +78,8 @@ public class RandomizedUserService
         }
 
         await _dbContext.SaveChangesAsync();
-        
-        foreach (var user in users)
-        {
-            await _paralellAlgoService.Process(user.Id, GetRandomizedHistory());
-        }
+
+        foreach (var user in users) await _paralellAlgoService.Process(user.Id, GetRandomizedHistory());
 
         return users;
     }

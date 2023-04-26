@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using SGBackend.Connector.Spotify;
 using SGBackend.Entities;
@@ -5,13 +6,18 @@ using SGBackend.Entities;
 namespace SGBackend.Service;
 
 /// <summary>
-/// needs to be registered as singleton
+///     needs to be registered as singleton
 /// </summary>
 public class ParalellAlgoService
 {
+    private readonly ILogger<ParalellAlgoService> _logger;
+
+    private readonly SemaphoreSlim _mediaGlobalLock = new(1, 1);
+
+    private readonly SemaphoreSlim _mutualCalcSlim = new(1, 1);
     private readonly IServiceScopeFactory _scopeFactory;
 
-    private readonly ILogger<ParalellAlgoService> _logger;
+    private readonly Dictionary<Guid, SemaphoreSlim> _userSlims = new();
 
     public ParalellAlgoService(IServiceScopeFactory scopeFactory, ILogger<ParalellAlgoService> logger)
     {
@@ -19,8 +25,6 @@ public class ParalellAlgoService
         _logger = logger;
     }
 
-    private readonly SemaphoreSlim _mediaGlobalLock = new SemaphoreSlim(1, 1);
-    
     private async Task UpdateMedia(SpotifyListenHistory history)
     {
         using (var scope = _scopeFactory.CreateScope())
@@ -28,10 +32,11 @@ public class ParalellAlgoService
             var dbContext = scope.ServiceProvider.GetRequiredService<SgDbContext>();
             var dbExistingMedia = await dbContext.Media.ToArrayAsync();
 
-            var mediaToInsert = history.GetMedia().DistinctBy(m => m.LinkToMedium).Where(m => !dbExistingMedia.Any(existingMedia =>
-                existingMedia.LinkToMedium == m.LinkToMedium
-                && existingMedia.MediumSource == m.MediumSource)).ToArray();
-           
+            var mediaToInsert = history.GetMedia().DistinctBy(m => m.LinkToMedium).Where(m =>
+                !dbExistingMedia.Any(existingMedia =>
+                    existingMedia.LinkToMedium == m.LinkToMedium
+                    && existingMedia.MediumSource == m.MediumSource)).ToArray();
+
             if (mediaToInsert.Any())
             {
                 await dbContext.Media.AddRangeAsync(mediaToInsert);
@@ -39,25 +44,22 @@ public class ParalellAlgoService
             }
         }
     }
-    
-    private readonly Dictionary<Guid, SemaphoreSlim> _userSlims = new();
-    
+
     /// <summary>
-    /// 
     /// </summary>
     /// <param name="userId"></param>
     /// <param name="history"></param>
     /// <returns>Ids of updated/inserted playbacksummaries</returns>
-    private async Task<List<Guid>> ProcessRecordsUpdateSummaries(Guid userId, List<PlaybackRecord> addedRecords, List<PlaybackSummary> existingSummaries)
+    private async Task<List<Guid>> ProcessRecordsUpdateSummaries(Guid userId, List<PlaybackRecord> addedRecords,
+        List<PlaybackSummary> existingSummaries)
     {
-        
         using (var scope = _scopeFactory.CreateScope())
         {
             var dbContext = scope.ServiceProvider.GetRequiredService<SgDbContext>();
-            
+
             if (addedRecords.Any())
             {
-                var watch = System.Diagnostics.Stopwatch.StartNew();
+                var watch = Stopwatch.StartNew();
 
                 // calculate summaries
 
@@ -65,7 +67,8 @@ public class ParalellAlgoService
 
                 foreach (var newInsertedRecordGrouping in addedRecords.GroupBy(record => record.MediumId))
                 {
-                    var existingSummary = existingSummaries.FirstOrDefault(s => s.MediumId == newInsertedRecordGrouping.Key);
+                    var existingSummary =
+                        existingSummaries.FirstOrDefault(s => s.MediumId == newInsertedRecordGrouping.Key);
                     if (existingSummary != null)
                     {
                         // add sum of records on top and update last record timestamp
@@ -80,7 +83,7 @@ public class ParalellAlgoService
                             UserId = userId,
                             MediumId = newInsertedRecordGrouping.Key,
                             LastListened = newInsertedRecordGrouping.MaxBy(r => r.PlayedAt).PlayedAt,
-                            TotalSeconds = newInsertedRecordGrouping.Sum(r => r.PlayedSeconds),
+                            TotalSeconds = newInsertedRecordGrouping.Sum(r => r.PlayedSeconds)
                         };
                         // just dump new entry
                         await dbContext.PlaybackSummaries.AddAsync(newSummary);
@@ -89,25 +92,23 @@ public class ParalellAlgoService
                 }
 
                 await dbContext.SaveChangesAsync();
-                
+
                 watch.Stop();
                 var elapsedMs = watch.ElapsedMilliseconds;
-                
+
                 _logger.LogInformation("Update Summaries for {guid} took {ms} ms", userId, elapsedMs);
-                
+
                 return upsertedSummaries.Select(ps => ps.Id).ToList();
             }
-            
+
             // no new records, return empty list
             return new List<Guid>();
         }
     }
 
-    private readonly SemaphoreSlim _mutualCalcSlim = new SemaphoreSlim(1, 1);
-
     private async Task UpdateMutualPlaybackOverviews(Guid userId, List<Guid> summaryIds)
     {
-        var watch = System.Diagnostics.Stopwatch.StartNew();
+        var watch = Stopwatch.StartNew();
         using (var scope = _scopeFactory.CreateScope())
         {
             var dbContext = scope.ServiceProvider.GetRequiredService<SgDbContext>();
@@ -151,10 +152,10 @@ public class ParalellAlgoService
                     var mutualPlaybackEntry = playbackOverview.MutualPlaybackEntries
                         .FirstOrDefault(e => e.Medium == otherSummary.Medium);
 
-                    
+
                     long playbackSecondsUser1;
                     long playbackSecondsUser2;
-                    
+
                     if (playbackOverview.User1 == user)
                     {
                         // the current user, of which all upserted summaries are from, is user1 of the overview (since they are shared objects)
@@ -189,10 +190,10 @@ public class ParalellAlgoService
             }
 
             await dbContext.SaveChangesAsync();
-            
+
             watch.Stop();
             var elapsedMs = watch.ElapsedMilliseconds;
-                
+
             _logger.LogInformation("Update Overviews for {guid} took {ms} ms", userId, elapsedMs);
         }
     }
@@ -204,10 +205,7 @@ public class ParalellAlgoService
         // get / create lock for user
         lock (_userSlims)
         {
-            if (!_userSlims.ContainsKey(userId))
-            {
-                _userSlims.Add(userId, new SemaphoreSlim(1,1));
-            }
+            if (!_userSlims.ContainsKey(userId)) _userSlims.Add(userId, new SemaphoreSlim(1, 1));
 
             userSlim = _userSlims[userId];
         }
@@ -219,13 +217,12 @@ public class ParalellAlgoService
             using (var scope = _scopeFactory.CreateScope())
             {
                 var dbContext = scope.ServiceProvider.GetRequiredService<SgDbContext>();
-                
+
                 var user = await dbContext.User.Include(u => u.PlaybackSummaries).Include(u => u.PlaybackRecords)
                     .FirstAsync(u => u.Id == userId);
-                
+
                 summaries = await ProcessRecordsUpdateSummaries(userId, user.PlaybackRecords, user.PlaybackSummaries);
             }
-            
         }
         finally
         {
@@ -243,7 +240,7 @@ public class ParalellAlgoService
             _mutualCalcSlim.Release();
         }
     }
-    
+
     public async Task Process(Guid userId, SpotifyListenHistory history)
     {
         // insert missing media globally locked
@@ -256,15 +253,13 @@ public class ParalellAlgoService
         {
             _mediaGlobalLock.Release();
         }
+
         // insert records and update summaries, locked by user
         SemaphoreSlim userSlim;
         // get / create lock for user
         lock (_userSlims)
         {
-            if (!_userSlims.ContainsKey(userId))
-            {
-                _userSlims.Add(userId, new SemaphoreSlim(1,1));
-            }
+            if (!_userSlims.ContainsKey(userId)) _userSlims.Add(userId, new SemaphoreSlim(1, 1));
 
             userSlim = _userSlims[userId];
         }
@@ -276,16 +271,14 @@ public class ParalellAlgoService
             using (var scope = _scopeFactory.CreateScope())
             {
                 var dbContext = scope.ServiceProvider.GetRequiredService<SgDbContext>();
-                
+
                 var existingSpotifyMedia =
                     await dbContext.Media.Where(media => media.MediumSource == MediumSource.Spotify).ToArrayAsync();
-                
+
                 var user = await dbContext.User.Include(u => u.PlaybackSummaries).Include(u => u.PlaybackRecords)
                     .FirstAsync(u => u.Id == userId);
 
-                
-                
-                
+
                 // 2 in one
                 var records = history.GetPlaybackRecords(existingSpotifyMedia, user);
 
@@ -297,10 +290,9 @@ public class ParalellAlgoService
 
                 await dbContext.PlaybackRecords.AddRangeAsync(records);
                 await dbContext.SaveChangesAsync();
-                
+
                 summaries = await ProcessRecordsUpdateSummaries(userId, records, user.PlaybackSummaries);
             }
-            
         }
         finally
         {

@@ -29,7 +29,7 @@ public class UserController : ControllerBase
     {
         var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
         var dbUser = await _dbContext.User.Include(u => u.PlaybackRecords).FirstAsync(u => u.Id == userId);
-        
+
         if (settings.language != null)
         {
             Enum.TryParse(settings.language, out Language lang);
@@ -48,11 +48,8 @@ public class UserController : ControllerBase
         var dbUser = await _dbContext.User.Include(u => u.PlaybackRecords).FirstAsync(u => u.Id == userId);
         var spotifyToken = await _spotifyConnector.GetAccessTokenUsingRefreshToken(dbUser);
 
-        if (spotifyToken == null)
-        {
-            return null;
-        }
-        
+        if (spotifyToken == null) return null;
+
         return new Token
         {
             spotifyToken = spotifyToken.access_token
@@ -76,7 +73,7 @@ public class UserController : ControllerBase
     {
         return await GetProfileInformationGuid(Guid.Parse(guid));
     }
-    
+
     [Authorize]
     [HttpGet("profile-information")]
     public async Task<ProfileInformation> GetProfileInformation()
@@ -87,7 +84,8 @@ public class UserController : ControllerBase
 
     private async Task<ProfileInformation> GetProfileInformationGuid(Guid userId)
     {
-        var dbUser = await _dbContext.User.Include(u => u.Stats).Include(u => u.PlaybackRecords).FirstAsync(u => u.Id == userId);
+        var dbUser = await _dbContext.User.Include(u => u.Stats).Include(u => u.PlaybackRecords)
+            .FirstAsync(u => u.Id == userId);
 
         var earliestRecord = dbUser.PlaybackRecords.MinBy(r => r.PlayedAt);
         return new ProfileInformation
@@ -107,7 +105,7 @@ public class UserController : ControllerBase
     {
         return await GetSummaryForGuid(Guid.Parse(guid));
     }
-    
+
     [Authorize]
     [HttpGet("spotify/personal-summary")]
     public async Task<RecommendedMedia[]> GetPersonalSummary()
@@ -124,7 +122,8 @@ public class UserController : ControllerBase
             .Include(u => u.PlaybackSummaries).ThenInclude(ps => ps.Medium).ThenInclude(m => m.Images)
             .FirstAsync(u => u.Id == userId);
 
-        return dbUser.PlaybackSummaries.Select(ps => ps.Medium.ToRecommendedMedia(ps.TotalSeconds)).OrderByDescending(ms => ms.listenedSeconds)
+        return dbUser.PlaybackSummaries.Select(ps => ps.Medium.ToRecommendedMedia(ps.TotalSeconds))
+            .OrderByDescending(ms => ms.listenedSeconds)
             .ToArray();
     }
 
@@ -153,9 +152,10 @@ public class UserController : ControllerBase
 
         var loggedInUser = await _dbContext.User.Include(u => u.PlaybackSummaries).ThenInclude(ps => ps.Medium)
             .FirstAsync(u => u.Id == userId);
-        
-        var requestedUser = await _dbContext.User.Include(u => u.PlaybackSummaries).FirstAsync(u => u.Id == guidRequested);
-        
+
+        var requestedUser =
+            await _dbContext.User.Include(u => u.PlaybackSummaries).FirstAsync(u => u.Id == guidRequested);
+
         var match = await _dbContext.MutualPlaybackOverviews
             .Include(m => m.User1)
             .Include(m => m.User2)
@@ -165,7 +165,9 @@ public class UserController : ControllerBase
             .Include(m => m.MutualPlaybackEntries)
             .ThenInclude(m => m.Medium)
             .ThenInclude(m => m.Images)
-            .FirstAsync(m => (m.User1 == loggedInUser && m.User2 == requestedUser) || (m.User2 == loggedInUser && m.User1 == requestedUser));
+            .FirstAsync(m =>
+                (m.User1 == loggedInUser && m.User2 == requestedUser) ||
+                (m.User2 == loggedInUser && m.User1 == requestedUser));
 
         // all mutual playback results, 
         return match.MutualPlaybackEntries.Select(m =>
@@ -173,14 +175,11 @@ public class UserController : ControllerBase
             long listenedSecondsMatch;
             // determine listened seconds of the other user, useful in case the other user listened more to the song than yourself
             if (match.User1 == loggedInUser)
-            {
                 listenedSecondsMatch = m.PlaybackSecondsUser2;
-            }
             else
-            {
                 listenedSecondsMatch = m.PlaybackSecondsUser1;
-            }
-            return m.Medium.ToTogetherConsumedTrack(listenedSecondsMatch, Math.Min(m.PlaybackSecondsUser1, m.PlaybackSecondsUser2));
+            return m.Medium.ToTogetherConsumedTrack(listenedSecondsMatch,
+                Math.Min(m.PlaybackSecondsUser1, m.PlaybackSecondsUser2));
         }).OrderByDescending(ms => ms.listenedSecondsTogether).ToArray();
     }
 
@@ -204,6 +203,7 @@ public class UserController : ControllerBase
             .FirstAsync(u => u.Id == guidRequested);
 
         return requestedUser.PlaybackSummaries.Where(ps => !knownMedia.Contains(ps.Medium))
-            .Select(ps => ps.Medium.ToRecommendedMedia(ps.TotalSeconds)).OrderByDescending(ms => ms.listenedSeconds).ToArray();
+            .Select(ps => ps.Medium.ToRecommendedMedia(ps.TotalSeconds)).OrderByDescending(ms => ms.listenedSeconds)
+            .ToArray();
     }
 }

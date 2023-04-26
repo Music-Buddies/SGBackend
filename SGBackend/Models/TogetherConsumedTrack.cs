@@ -11,9 +11,9 @@ public class TogetherConsumedTrack
     public bool explicitFlag { get; set; }
 
     public long listenedSecondsTogether { get; set; }
-    
+
     public long listenedSecondsMatch { get; set; }
-    
+
     public MediumImage[] albumImages { get; set; }
 
     public string linkToMedia { get; set; }

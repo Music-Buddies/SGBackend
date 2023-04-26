@@ -1,4 +1,3 @@
-using System.Runtime.InteropServices;
 using Microsoft.EntityFrameworkCore;
 using SGBackend.Models;
 
@@ -15,7 +14,7 @@ public class Medium : BaseEntity
     public string Title { get; set; }
 
     public MediumSource MediumSource { get; set; }
-    
+
     public string LinkToMedium { get; set; }
 
     public bool ExplicitContent { get; set; }
@@ -27,7 +26,7 @@ public class Medium : BaseEntity
     public string AlbumName { get; set; }
 
     public string ReleaseDate { get; set; }
-    
+
     public TogetherConsumedTrack ToTogetherConsumedTrack(long listenedSecondsMatch, long listenedSecondsTogether)
     {
         return new TogetherConsumedTrack
@@ -44,7 +43,7 @@ public class Medium : BaseEntity
             listenedSecondsMatch = listenedSecondsMatch
         };
     }
-    
+
     public RecommendedMedia ToRecommendedMedia(long listenedSeconds)
     {
         return new RecommendedMedia
@@ -60,7 +59,7 @@ public class Medium : BaseEntity
             listenedSeconds = listenedSeconds
         };
     }
- 
+
     private static MediumImage[] SortBySize(List<MediumImage> mediumImages)
     {
         return mediumImages.OrderBy(i => i.height).ThenBy(i => i.width).ToArray();
@@ -87,7 +86,7 @@ public class ExportMedium
     public string Title { get; set; }
 
     public MediumSource MediumSource { get; set; }
-    
+
     public string LinkToMedium { get; set; }
 
     public bool ExplicitContent { get; set; }

@@ -6,7 +6,6 @@ using SGBackend.Connector;
 using SGBackend.Connector.Spotify;
 using SGBackend.Entities;
 using SGBackend.Models;
-using SGBackend.Provider;
 using SGBackend.Service;
 
 namespace SGBackendTest;
@@ -43,7 +42,7 @@ public class PlaybackServiceTest : IClassFixture<PlaybackServiceFixture>
     {
         _serviceProvider = fixture.ServiceProvider;
     }
-    
+
     [Fact]
     public async Task TestPerformance()
     {
@@ -59,7 +58,7 @@ public class PlaybackServiceTest : IClassFixture<PlaybackServiceFixture>
         var userService = _serviceProvider.GetService<UserService>();
         var algoService = _serviceProvider.GetService<ParalellAlgoService>();
         var db = _serviceProvider.GetService<SgDbContext>();
-        
+
         var user = await userService.AddUser(rndUserService.GetRandomizedDummyUser());
 
         await algoService.Process(user.Id, rndUserService.GetRandomizedHistory());
@@ -69,17 +68,14 @@ public class PlaybackServiceTest : IClassFixture<PlaybackServiceFixture>
         var summaries = (await db.User
             .Include(u => u.PlaybackSummaries)
             .FirstAsync(u => u.Id == user.Id)).PlaybackSummaries.ToArray();
-        
+
         Assert.NotEmpty(insertedRecords);
         Assert.NotEmpty(summaries);
-        
+
         // move history forward and recalc, should have added more records
         var secondHistory = rndUserService.GetRandomizedHistory();
-        foreach (var historyItem in secondHistory.items)
-        {
-            historyItem.played_at = historyItem.played_at.AddYears(1);
-        }
-        
+        foreach (var historyItem in secondHistory.items) historyItem.played_at = historyItem.played_at.AddYears(1);
+
         await algoService.Process(user.Id, secondHistory);
         var insertedRecords2 = (await db.User
             .Include(u => u.PlaybackRecords)
@@ -87,7 +83,7 @@ public class PlaybackServiceTest : IClassFixture<PlaybackServiceFixture>
         var summaries2 = (await db.User
             .Include(u => u.PlaybackSummaries)
             .FirstAsync(u => u.Id == user.Id)).PlaybackSummaries.ToArray();
-        
+
         Assert.True(insertedRecords2.Length > insertedRecords.Length);
         Assert.True(summaries2.Length > summaries.Length);
     }
@@ -98,7 +94,7 @@ public class PlaybackServiceTest : IClassFixture<PlaybackServiceFixture>
         var userService = _serviceProvider.GetService<UserService>();
         var rndUserService = _serviceProvider.GetService<RandomizedUserService>();
         var db = _serviceProvider.GetService<SgDbContext>();
-        
+
         // create dummy users
         var users = new List<User>();
         foreach (var i in Enumerable.Range(0, 5))
@@ -106,15 +102,16 @@ public class PlaybackServiceTest : IClassFixture<PlaybackServiceFixture>
             var dummyUser = await userService.AddUser(rndUserService.GetRandomizedDummyUser());
             users.Add(dummyUser);
         }
+
         await db.SaveChangesAsync();
-        
-        
+
+
         var tasks = new List<Task>();
         // insert histories in paralell
         foreach (var user in users)
         {
             var history = rndUserService.GetRandomizedHistory();
-            
+
             var insertFunc = async () =>
             {
                 using (var scope = _serviceProvider.CreateScope())
@@ -123,19 +120,16 @@ public class PlaybackServiceTest : IClassFixture<PlaybackServiceFixture>
                     await algo.Process(user.Id, history);
                 }
             };
-            
-            foreach (var i in Enumerable.Range(0, 5))
-            {
-                tasks.Add(Task.Run(insertFunc));
-            }
+
+            foreach (var i in Enumerable.Range(0, 5)) tasks.Add(Task.Run(insertFunc));
         }
-        
+
         await Task.WhenAll(tasks);
     }
 
     [Fact]
     public async Task Test()
-    {   
+    {
         var db = _serviceProvider.GetService<SgDbContext>();
         var rndUserService = _serviceProvider.GetService<RandomizedUserService>();
         var rndUsers = await rndUserService.GenerateXRandomUsersAndCalc(5);
@@ -160,7 +154,8 @@ public class PlaybackServiceTest : IClassFixture<PlaybackServiceFixture>
             var sumUser2 = recordsUser2.Sum(r => r.PlayedSeconds);
 
             var listenedTogether = Math.Min(sumUser1, sumUser2);
-            Assert.Equal(listenedTogether, Math.Min(mutualPlaybackEntry.PlaybackSecondsUser2, mutualPlaybackEntry.PlaybackSecondsUser1));
+            Assert.Equal(listenedTogether,
+                Math.Min(mutualPlaybackEntry.PlaybackSecondsUser2, mutualPlaybackEntry.PlaybackSecondsUser1));
         }
     }
 }

@@ -10,7 +10,7 @@ namespace SGBackend.Connector;
 public static class ExternalApiClientExtension
 {
     /// <summary>
-    /// Requires ISecretsProvider to be initialized
+    ///     Requires ISecretsProvider to be initialized
     /// </summary>
     /// <param name="serviceCollection"></param>
     public static void AddExternalApiClients(this IServiceCollection serviceCollection)
@@ -23,7 +23,7 @@ public static class ExternalApiClientExtension
         // fetch secrets
         var secretsProvider = serviceCollection.BuildServiceProvider().GetRequiredService<ISecretsProvider>();
         var secrets = secretsProvider.GetSecret<Secrets>();
-        
+
         serviceCollection.AddRefitClient<ISpotifyApi>().ConfigureHttpClient(httpClient =>
         {
             httpClient.BaseAddress = new Uri("https://api.spotify.com/");

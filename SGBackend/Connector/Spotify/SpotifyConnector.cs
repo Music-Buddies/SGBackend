@@ -39,10 +39,7 @@ public class SpotifyConnector : IContentConnector
             { "refresh_token", dbUser.SpotifyRefreshToken }
         });
 
-        if (token.IsSuccessStatusCode)
-        {
-            return token.Content;
-        }
+        if (token.IsSuccessStatusCode) return token.Content;
         _logger.LogError(token.Error.Content);
 
         return null;
@@ -60,15 +57,15 @@ public class SpotifyConnector : IContentConnector
                 .Include(u => u.PlaybackRecords)
                 .FirstOrDefaultAsync(user => user.SpotifyId == spotifyUserUrl.Value);
             var userExistedPreviously = dbUser != null;
-            
+
             if (dbUser != null)
             {
                 // user already exists
-                
+
                 if (dbUser.SpotifyRefreshToken == null)
                 {
                     // user disconnected spotify and logged back in again
-                
+
                     // set refresh token again
                     dbUser.SpotifyRefreshToken = context.RefreshToken;
                     await _dbContext.SaveChangesAsync();
@@ -109,14 +106,11 @@ public class SpotifyConnector : IContentConnector
     {
         var accessToken = await _tokenProvider.GetAccessToken(user);
 
-        if (accessToken == null)
-        {
-            return null;
-        }
-        
+        if (accessToken == null) return null;
+
         var history =
             await _spotifyApi.GetEntireAvailableHistory("Bearer " + accessToken);
-        
+
         return history;
     }
 }

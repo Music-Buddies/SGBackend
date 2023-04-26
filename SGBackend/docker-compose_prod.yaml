@@ -39,7 +39,7 @@ services:
 
 volumes:
   v-sg-mysql:
-    
+
 networks:
   jitcom_net:
     external: true

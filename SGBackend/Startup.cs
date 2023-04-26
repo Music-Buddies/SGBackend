@@ -1,13 +1,10 @@
-using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authentication.OAuth;
-using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.OpenApi.Models;
 using MySql.EntityFrameworkCore.Extensions;
-using Newtonsoft.Json.Converters;
 using Quartz;
 using SecretsProvider;
 using SGBackend.Connector;
@@ -16,7 +13,6 @@ using SGBackend.Entities;
 using SGBackend.Models;
 using SGBackend.Provider;
 using SGBackend.Service;
-
 
 namespace SGBackend;
 
@@ -35,10 +31,9 @@ public class Startup
 {
     public void ConfigureServices(WebApplicationBuilder builder)
     {
-        
         builder.AddSecretsProvider("SG");
         var tempProvider = builder.Services.BuildServiceProvider();
-        ISecretsProvider secretsProvider = tempProvider.GetRequiredService<ISecretsProvider>();
+        var secretsProvider = tempProvider.GetRequiredService<ISecretsProvider>();
 
         builder.Services.AddExternalApiClients();
 
@@ -68,7 +63,8 @@ public class Startup
         // configure jwt validation using tokenprovider
         builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
             .Configure<JwtProvider>((options, provider) =>
-                options.TokenValidationParameters = provider.GetJwtValidationParameters(secretsProvider.GetSecret<Secrets>().JwtKey));
+                options.TokenValidationParameters =
+                    provider.GetJwtValidationParameters(secretsProvider.GetSecret<Secrets>().JwtKey));
 
         builder.Services.AddAuthentication(options =>
         {
@@ -82,7 +78,6 @@ public class Startup
             options.LogoutPath = "/signout";
         }).AddJwtBearer().AddSpotify(options =>
         {
-            
             options.ClientId = secretsProvider.GetSecret<Secrets>().SpotifyClientId;
             options.ClientSecret = secretsProvider.GetSecret<Secrets>().SpotifyClientSecret;
             options.Scope.Add("user-read-recently-played");
@@ -122,15 +117,13 @@ public class Startup
                         var history = await spotifyConnector.FetchAvailableContentHistory(dbUser);
 
                         if (history != null)
-                        {
                             // only with valid token
                             await paralellAlgo.Process(dbUser.Id, history);
-                        }
                     }
                 }
             };
         });
-        
+
         builder.Services.AddSwaggerGen(option =>
         {
             option.SwaggerDoc("v1", new OpenApiInfo { Title = "SG Api", Version = "v1" });
@@ -158,8 +151,6 @@ public class Startup
                 }
             });
         });
-        
-        
     }
 
     public async Task Configure(WebApplication app)
@@ -173,10 +164,10 @@ public class Startup
 
             await context.Database.MigrateAsync();
         }
-        
+
         app.UseSwagger();
         app.UseSwaggerUI();
-        
+
         // Configure the HTTP request pipeline.
         if (app.Environment.IsDevelopment())
         {
@@ -200,20 +191,18 @@ public class Startup
         }
 
         if (app.Environment.IsProduction())
-        {
             app.Use(async (context, next) =>
             {
                 context.Request.Host = new HostString("suggest-app.com");
                 context.Request.Scheme = "https";
                 await next();
             });
-        }
-        
+
         // quartz & job init
         using (var scope = app.Services.CreateScope())
         {
             var services = scope.ServiceProvider;
-            
+
             var dbContext = services.GetRequiredService<SgDbContext>();
             var state = await dbContext.States.FirstOrDefaultAsync();
             if (state == null)
@@ -223,21 +212,21 @@ public class Startup
                     QuartzApplied = true,
                     GroupedFetchJobInstalled = true
                 });
-                    
+
                 // first initialisations
-                
+
                 // quartz
                 var quartzTables = File.ReadAllText("generateQuartzTables.sql");
                 await dbContext.Database.ExecuteSqlRawAsync(quartzTables);
-                    
+
                 await dbContext.SaveChangesAsync();
 
                 var schedulerFactory = scope.ServiceProvider.GetRequiredService<ISchedulerFactory>();
-                
+
                 // fetch job
                 var job = JobBuilder.Create<SpotifyGroupedFetchJob>()
                     .Build();
-                
+
                 var trigger = TriggerBuilder.Create()
                     .WithIdentity("groupedFetchJob", "fetch")
                     .WithSchedule(SimpleScheduleBuilder.RepeatHourlyForever(4))
@@ -248,7 +237,7 @@ public class Startup
                 await scheduler.ScheduleJob(job, trigger);
             }
         }
-        
+
         // test loggin
         using (var scope = app.Services.CreateScope())
         {
@@ -260,7 +249,7 @@ public class Startup
         app.UseAuthorization();
 
         app.MapControllers();
-        
+
         app.Run();
     }
 }
