@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Authentication.OAuth;
 using Microsoft.EntityFrameworkCore;
-using Quartz;
 using SGBackend.Entities;
 using SGBackend.Provider;
 using SGBackend.Service;
@@ -13,7 +12,6 @@ public class SpotifyConnector : IContentConnector
 
     private readonly ILogger<SpotifyConnector> _logger;
 
-    private readonly ISchedulerFactory _schedulerFactory;
     private readonly ISpotifyApi _spotifyApi;
 
     private readonly ISpotifyAuthApi _spotifyAuthApi;
@@ -23,8 +21,7 @@ public class SpotifyConnector : IContentConnector
     private readonly UserService _userService;
 
     public SpotifyConnector(ISpotifyApi spotifyApi, ISpotifyAuthApi spotifyAuthApi, SgDbContext dbContext,
-        ILogger<SpotifyConnector> logger, UserService userService, AccessTokenProvider tokenProvider,
-        ISchedulerFactory schedulerFactory)
+        ILogger<SpotifyConnector> logger, UserService userService, AccessTokenProvider tokenProvider)
     {
         _spotifyApi = spotifyApi;
         _spotifyAuthApi = spotifyAuthApi;
@@ -32,7 +29,6 @@ public class SpotifyConnector : IContentConnector
         _logger = logger;
         _userService = userService;
         _tokenProvider = tokenProvider;
-        _schedulerFactory = schedulerFactory;
     }
 
     public async Task<TokenResponse?> GetAccessTokenUsingRefreshToken(User dbUser)

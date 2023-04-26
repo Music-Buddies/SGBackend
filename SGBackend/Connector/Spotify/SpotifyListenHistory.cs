@@ -2,13 +2,6 @@ using SGBackend.Entities;
 
 namespace SGBackend.Connector.Spotify;
 
-public class SpotifyHistoryWithUser
-{
-    public SpotifyListenHistory SpotifyListenHistory { get; set; }
-
-    public User user { get; set; }
-}
-
 public class SpotifyListenHistory
 {
     public List<Item> items { get; set; }
