@@ -1,8 +1,5 @@
-﻿using System.Security.Claims;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Org.BouncyCastle.Utilities;
 using Quartz;
 using SecretsProvider;
 using SGBackend.Connector.Spotify;
@@ -48,7 +45,7 @@ public class AdminController  : ControllerBase
             return Unauthorized();
         }
         
-        // import missing media
+        // import missing media, requirement of the most basic record entity type
         var existingMediaUrls = await _dbContext.Media.Select(m => m.LinkToMedium).ToArrayAsync();
 
         var exportMediaToImport =
@@ -60,12 +57,13 @@ public class AdminController  : ControllerBase
         // get link map for other exports
         var mediaLinkMap = (await _dbContext.Media.ToArrayAsync()).ToDictionary(m => m.LinkToMedium, m => m.Id);
 
+        // filter out users that already exist (no need to import them again
         var existingUserSpotifyIds = await _dbContext.User.Select(u => u.SpotifyId).ToArrayAsync();
-
         var exportUsersToImport = exportContainer.users.Where(u => !existingUserSpotifyIds.Contains(u.SpotifyId)).ToList();
 
-        var dbUsers = exportUsersToImport.Select(u => u.ToUser(mediaLinkMap)).ToArray();
         
+        // import the users with all their records
+        var dbUsers = exportUsersToImport.Select(u => u.ToUser(mediaLinkMap)).ToArray();
         foreach (var user in dbUsers)
         {
             await _userService.AddUser(user);
@@ -74,6 +72,7 @@ public class AdminController  : ControllerBase
         await _dbContext.User.AddRangeAsync();
         await _dbContext.SaveChangesAsync();
 
+        // calculate everything for the imported users
         foreach (var dbUser in dbUsers)
         {
             await _algoService.ProcessImport(dbUser.Id);
@@ -82,7 +81,6 @@ public class AdminController  : ControllerBase
         // trigger fetch job once, to set last fetched timestamp for users
         var job = JobBuilder.Create<SpotifyGroupedFetchJob>()
             .Build();
-                
         var trigger = TriggerBuilder.Create()
             .StartNow()
             .Build();
@@ -120,6 +118,5 @@ public class ExportContainer
 {
     public string adminToken { get; set; }
     public List<ExportUser> users { get; set; }
-    
     public List<ExportMedium> media { get; set; }
 }

@@ -28,9 +28,9 @@ public class Medium : BaseEntity
 
     public string ReleaseDate { get; set; }
     
-    public MediaSummary ToMediaSummary()
+    public TogetherConsumedTrack ToTogetherConsumedTrack(long listenedSecondsMatch, long listenedSecondsTogether)
     {
-        return new MediaSummary
+        return new TogetherConsumedTrack
         {
             albumImages = SortBySize(Images),
             allArtists = Artists.Select(a => a.Name).ToArray(),
@@ -39,10 +39,28 @@ public class Medium : BaseEntity
             // https://open.spotify.com/track/4EWCNWgDS8707fNSZ1oaA5
             linkToMedia = $"spotify:track:{LinkToMedium.Split("/").Last()}",
             albumName = AlbumName,
-            releaseDate = ReleaseDate
+            releaseDate = ReleaseDate,
+            listenedSecondsTogether = listenedSecondsTogether,
+            listenedSecondsMatch = listenedSecondsMatch
         };
     }
     
+    public RecommendedMedia ToRecommendedMedia(long listenedSeconds)
+    {
+        return new RecommendedMedia
+        {
+            albumImages = SortBySize(Images),
+            allArtists = Artists.Select(a => a.Name).ToArray(),
+            explicitFlag = ExplicitContent,
+            songTitle = Title,
+            // https://open.spotify.com/track/4EWCNWgDS8707fNSZ1oaA5
+            linkToMedia = $"spotify:track:{LinkToMedium.Split("/").Last()}",
+            albumName = AlbumName,
+            releaseDate = ReleaseDate,
+            listenedSeconds = listenedSeconds
+        };
+    }
+ 
     private static MediumImage[] SortBySize(List<MediumImage> mediumImages)
     {
         return mediumImages.OrderBy(i => i.height).ThenBy(i => i.width).ToArray();

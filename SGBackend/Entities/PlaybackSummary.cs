@@ -17,10 +17,4 @@ public class PlaybackSummary : BaseUserEntity
 
     public DateTime LastListened { get; set; }
     
-    public MediaSummary ToMediaSummary()
-    {
-        var summary = Medium.ToMediaSummary();
-        summary.listenedSeconds = TotalSeconds;
-        return summary;
-    }
 }

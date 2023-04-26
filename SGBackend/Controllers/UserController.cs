@@ -103,28 +103,28 @@ public class UserController : ControllerBase
 
     [Authorize]
     [HttpGet("spotify/personal-summary/{guid}")]
-    public async Task<MediaSummary[]> GetPersonalSummaryOfOtherUser(string guid)
+    public async Task<RecommendedMedia[]> GetPersonalSummaryOfOtherUser(string guid)
     {
         return await GetSummaryForGuid(Guid.Parse(guid));
     }
     
     [Authorize]
     [HttpGet("spotify/personal-summary")]
-    public async Task<MediaSummary[]> GetPersonalSummary()
+    public async Task<RecommendedMedia[]> GetPersonalSummary()
     {
         var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
 
         return await GetSummaryForGuid(userId);
     }
 
-    private async Task<MediaSummary[]> GetSummaryForGuid(Guid userId)
+    private async Task<RecommendedMedia[]> GetSummaryForGuid(Guid userId)
     {
         var dbUser = await _dbContext.User
             .Include(u => u.PlaybackSummaries).ThenInclude(ps => ps.Medium).ThenInclude(m => m.Artists)
             .Include(u => u.PlaybackSummaries).ThenInclude(ps => ps.Medium).ThenInclude(m => m.Images)
             .FirstAsync(u => u.Id == userId);
 
-        return dbUser.PlaybackSummaries.Select(ps => ps.ToMediaSummary()).OrderByDescending(ms => ms.listenedSeconds)
+        return dbUser.PlaybackSummaries.Select(ps => ps.Medium.ToRecommendedMedia(ps.TotalSeconds)).OrderByDescending(ms => ms.listenedSeconds)
             .ToArray();
     }
 
@@ -146,7 +146,7 @@ public class UserController : ControllerBase
 
     [Authorize]
     [HttpGet("matches/{guid}/together-consumed/tracks")]
-    public async Task<MediaSummary[]> GetListenedTogetherTracks(string guid)
+    public async Task<TogetherConsumedTrack[]> GetListenedTogetherTracks(string guid)
     {
         var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
         var guidRequested = Guid.Parse(guid);
@@ -167,27 +167,26 @@ public class UserController : ControllerBase
             .ThenInclude(m => m.Images)
             .FirstAsync(m => (m.User1 == loggedInUser && m.User2 == requestedUser) || (m.User2 == loggedInUser && m.User1 == requestedUser));
 
+        // all mutual playback results, 
         return match.MutualPlaybackEntries.Select(m =>
         {
-            var summary = m.Medium.ToMediaSummary();
+            long listenedSecondsMatch;
+            // determine listened seconds of the other user, useful in case the other user listened more to the song than yourself
             if (match.User1 == loggedInUser)
             {
-                summary.listenedSeconds = m.PlaybackSecondsUser1;
-                summary.listenedSecondsMatch = m.PlaybackSecondsUser2;
+                listenedSecondsMatch = m.PlaybackSecondsUser2;
             }
             else
             {
-                summary.listenedSeconds = m.PlaybackSecondsUser2;
-                summary.listenedSecondsMatch = m.PlaybackSecondsUser1;
+                listenedSecondsMatch = m.PlaybackSecondsUser1;
             }
-            
-            return summary;
-        }).OrderByDescending(ms => ms.listenedSeconds).ToArray();
+            return m.Medium.ToTogetherConsumedTrack(listenedSecondsMatch, Math.Min(m.PlaybackSecondsUser1, m.PlaybackSecondsUser2));
+        }).OrderByDescending(ms => ms.listenedSecondsTogether).ToArray();
     }
 
     [Authorize]
     [HttpGet("matches/{guid}/recommended-media")]
-    public async Task<MediaSummary[]> GetRecommendedMedia(string guid)
+    public async Task<RecommendedMedia[]> GetRecommendedMedia(string guid)
     {
         var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
         var guidRequested = Guid.Parse(guid);
@@ -205,6 +204,6 @@ public class UserController : ControllerBase
             .FirstAsync(u => u.Id == guidRequested);
 
         return requestedUser.PlaybackSummaries.Where(ps => !knownMedia.Contains(ps.Medium))
-            .Select(ps => ps.ToMediaSummary()).OrderByDescending(ms => ms.listenedSeconds).ToArray();
+            .Select(ps => ps.Medium.ToRecommendedMedia(ps.TotalSeconds)).OrderByDescending(ms => ms.listenedSeconds).ToArray();
     }
 }

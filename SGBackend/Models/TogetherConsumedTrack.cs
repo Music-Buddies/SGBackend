@@ -1,8 +1,8 @@
-using SGBackend.Entities;
+﻿using SGBackend.Entities;
 
 namespace SGBackend.Models;
 
-public class MediaSummary
+public class TogetherConsumedTrack
 {
     public string songTitle { get; set; }
 
@@ -10,9 +10,9 @@ public class MediaSummary
 
     public bool explicitFlag { get; set; }
 
-    public long listenedSeconds { get; set; }
+    public long listenedSecondsTogether { get; set; }
     
-    public long? listenedSecondsMatch { get; set; }
+    public long listenedSecondsMatch { get; set; }
     
     public MediumImage[] albumImages { get; set; }
 
