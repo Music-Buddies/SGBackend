@@ -12,6 +12,8 @@ public class ProfileInformation
     public DateTime? trackingSince { get; set; }
 
     public long totalListenedSeconds { get; set; }
+    
+    public long? totalTogetherListenedSeconds { get; set; }
 
     public DateTime? latestFetch { get; set; }
 
