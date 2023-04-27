@@ -27,7 +27,7 @@ public class Medium : BaseEntity
 
     public string ReleaseDate { get; set; }
 
-    public TogetherConsumedTrack ToTogetherConsumedTrack(long listenedSecondsMatch, long listenedSecondsTogether)
+    public TogetherConsumedTrack ToTogetherConsumedTrack(long listenedSecondsMatch, long listenedSecondsYou)
     {
         return new TogetherConsumedTrack
         {
@@ -39,7 +39,7 @@ public class Medium : BaseEntity
             linkToMedia = $"spotify:track:{LinkToMedium.Split("/").Last()}",
             albumName = AlbumName,
             releaseDate = ReleaseDate,
-            listenedSecondsTogether = listenedSecondsTogether,
+            listenedSecondsYou = listenedSecondsYou,
             listenedSecondsMatch = listenedSecondsMatch
         };
     }

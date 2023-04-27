@@ -10,7 +10,7 @@ public class TogetherConsumedTrack
 
     public bool explicitFlag { get; set; }
 
-    public long listenedSecondsTogether { get; set; }
+    public long listenedSecondsYou { get; set; }
 
     public long listenedSecondsMatch { get; set; }
 

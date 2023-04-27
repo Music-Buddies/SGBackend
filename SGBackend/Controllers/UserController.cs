@@ -169,7 +169,7 @@ public class UserController : ControllerBase
 
     [Authorize]
     [HttpGet("matches/{guid}/together-consumed/tracks")]
-    public async Task<TogetherConsumedTrack[]> GetListenedTogetherTracks(string guid)
+    public async Task<TogetherConsumedTrack[]> GetListenedTogetherTracks(string guid, int? limit)
     {
         var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
         var guidRequested = Guid.Parse(guid);
@@ -193,23 +193,37 @@ public class UserController : ControllerBase
                 (m.User1 == loggedInUser && m.User2 == requestedUser) ||
                 (m.User2 == loggedInUser && m.User1 == requestedUser));
 
-        // all mutual playback results, 
-        return match.MutualPlaybackEntries.Select(m =>
+        var tracks = match.MutualPlaybackEntries.Select(m =>
         {
             long listenedSecondsMatch;
+            long listenedSecondsYou;
             // determine listened seconds of the other user, useful in case the other user listened more to the song than yourself
             if (match.User1 == loggedInUser)
+            {
                 listenedSecondsMatch = m.PlaybackSecondsUser2;
+                listenedSecondsYou = m.PlaybackSecondsUser1;
+            }
             else
+            {
                 listenedSecondsMatch = m.PlaybackSecondsUser1;
-            return m.Medium.ToTogetherConsumedTrack(listenedSecondsMatch,
-                Math.Min(m.PlaybackSecondsUser1, m.PlaybackSecondsUser2));
-        }).OrderByDescending(ms => ms.listenedSecondsTogether).ToArray();
+                listenedSecondsYou = m.PlaybackSecondsUser2;
+            }
+
+            return m.Medium.ToTogetherConsumedTrack(listenedSecondsMatch, listenedSecondsYou);
+        });
+
+        if (limit.HasValue)
+        {
+            // all mutual playback results, 
+            return tracks.OrderByDescending(ms => Math.Min(ms.listenedSecondsYou, ms.listenedSecondsMatch)).Take(limit.Value).ToArray();
+        }
+       
+        return tracks.OrderByDescending(ms => Math.Min(ms.listenedSecondsYou, ms.listenedSecondsMatch)).ToArray();
     }
 
     [Authorize]
     [HttpGet("matches/{guid}/recommended-media")]
-    public async Task<RecommendedMedia[]> GetRecommendedMedia(string guid)
+    public async Task<RecommendedMedia[]> GetRecommendedMedia(string guid, int? limit)
     {
         var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
         var guidRequested = Guid.Parse(guid);
@@ -226,8 +240,15 @@ public class UserController : ControllerBase
             .ThenInclude(m => m.Images)
             .FirstAsync(u => u.Id == guidRequested);
 
-        return requestedUser.PlaybackSummaries.Where(ps => !knownMedia.Contains(ps.Medium))
-            .Select(ps => ps.Medium.ToRecommendedMedia(ps.TotalSeconds)).OrderByDescending(ms => ms.listenedSeconds)
-            .ToArray();
+        var summaries = requestedUser.PlaybackSummaries.Where(ps => !knownMedia.Contains(ps.Medium))
+            .Select(ps => ps.Medium.ToRecommendedMedia(ps.TotalSeconds));
+
+        if (limit.HasValue)
+        {
+            return summaries.OrderByDescending(ms => ms.listenedSeconds)
+                .Take(limit.Value).ToArray();
+        }
+        
+        return summaries.OrderByDescending(ms => ms.listenedSeconds).ToArray();
     }
 }
