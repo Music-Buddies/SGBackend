@@ -2,15 +2,19 @@
 
 namespace SGBackend.Models;
 
-public class RecommendedMedia
+public class MediaSummary
 {
     public string songTitle { get; set; }
 
     public string[] allArtists { get; set; }
 
     public bool explicitFlag { get; set; }
+    
+    public long? listenedSeconds { get; set; }
 
-    public long listenedSeconds { get; set; }
+    public long? listenedSecondsYou { get; set; }
+
+    public long? listenedSecondsMatch { get; set; }
 
     public MediumImage[] albumImages { get; set; }
 

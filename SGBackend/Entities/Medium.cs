@@ -27,9 +27,9 @@ public class Medium : BaseEntity
 
     public string ReleaseDate { get; set; }
 
-    public TogetherConsumedTrack ToTogetherConsumedTrack(long listenedSecondsMatch, long listenedSecondsYou)
+    public MediaSummary ToTogetherConsumedTrack(long listenedSecondsMatch, long listenedSecondsYou)
     {
-        return new TogetherConsumedTrack
+        return new MediaSummary
         {
             albumImages = SortBySize(Images),
             allArtists = Artists.Select(a => a.Name).ToArray(),
@@ -44,9 +44,9 @@ public class Medium : BaseEntity
         };
     }
 
-    public RecommendedMedia ToRecommendedMedia(long listenedSeconds)
+    public MediaSummary ToRecommendedMedia(long listenedSeconds)
     {
-        return new RecommendedMedia
+        return new MediaSummary
         {
             albumImages = SortBySize(Images),
             allArtists = Artists.Select(a => a.Name).ToArray(),

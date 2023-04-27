@@ -44,7 +44,7 @@ public class UserControllerTest : IClassFixture<WebApplicationFactory<Startup>>
     {
         var client = await TestSetupAsync();
         var response = await client.GetAsync("/user/spotify/personal-summary?limit=10");
-        var mediaSummariesArray = await response.Content.ReadFromJsonAsync<RecommendedMedia[]>();
+        var mediaSummariesArray = await response.Content.ReadFromJsonAsync<MediaSummary[]>();
 
         Assert.NotEmpty(mediaSummariesArray);
         Assert.NotEmpty(mediaSummariesArray[0].albumImages);
@@ -85,7 +85,7 @@ public class UserControllerTest : IClassFixture<WebApplicationFactory<Startup>>
         var matchesArray = await matchesResponse.Content.ReadFromJsonAsync<Match[]>();
         var guid = matchesArray[0].userId;
         var response = await client.GetAsync($"/user/matches/{guid}/recommended-media");
-        var mediaSummariesArray = await response.Content.ReadFromJsonAsync<RecommendedMedia[]>();
+        var mediaSummariesArray = await response.Content.ReadFromJsonAsync<MediaSummary[]>();
 
         Assert.NotEmpty(mediaSummariesArray);
         Assert.NotEmpty(mediaSummariesArray[0].albumImages);

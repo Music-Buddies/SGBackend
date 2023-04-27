@@ -101,21 +101,21 @@ public class UserController : ControllerBase
 
     [Authorize]
     [HttpGet("spotify/personal-summary/{guid}")]
-    public async Task<RecommendedMedia[]> GetPersonalSummaryOfOtherUser(string guid, int? limit)
+    public async Task<MediaSummary[]> GetPersonalSummaryOfOtherUser(string guid, int? limit)
     {
         return await GetSummaryForGuid(Guid.Parse(guid), limit);
     }
 
     [Authorize]
     [HttpGet("spotify/personal-summary")]
-    public async Task<RecommendedMedia[]> GetPersonalSummary(int? limit)
+    public async Task<MediaSummary[]> GetPersonalSummary(int? limit)
     {
         var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
 
         return await GetSummaryForGuid(userId, limit);
     }
 
-    private async Task<RecommendedMedia[]> GetSummaryForGuid(Guid userId, int? limit)
+    private async Task<MediaSummary[]> GetSummaryForGuid(Guid userId, int? limit)
     {
         var summariesQuery = _dbContext.PlaybackSummaries
             .Include(s => s.Medium).ThenInclude(m => m.Artists)
@@ -169,7 +169,7 @@ public class UserController : ControllerBase
 
     [Authorize]
     [HttpGet("matches/{guid}/together-consumed/tracks")]
-    public async Task<TogetherConsumedTrack[]> GetListenedTogetherTracks(string guid, int? limit)
+    public async Task<MediaSummary[]> GetListenedTogetherTracks(string guid, int? limit)
     {
         var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
         var guidRequested = Guid.Parse(guid);
@@ -215,15 +215,15 @@ public class UserController : ControllerBase
         if (limit.HasValue)
         {
             // all mutual playback results, 
-            return tracks.OrderByDescending(ms => Math.Min(ms.listenedSecondsYou, ms.listenedSecondsMatch)).Take(limit.Value).ToArray();
+            return tracks.OrderByDescending(ms => Math.Min(ms.listenedSecondsYou.Value, ms.listenedSecondsMatch.Value)).Take(limit.Value).ToArray();
         }
        
-        return tracks.OrderByDescending(ms => Math.Min(ms.listenedSecondsYou, ms.listenedSecondsMatch)).ToArray();
+        return tracks.OrderByDescending(ms => Math.Min(ms.listenedSecondsYou.Value, ms.listenedSecondsMatch.Value)).ToArray();
     }
 
     [Authorize]
     [HttpGet("matches/{guid}/recommended-media")]
-    public async Task<RecommendedMedia[]> GetRecommendedMedia(string guid, int? limit)
+    public async Task<MediaSummary[]> GetRecommendedMedia(string guid, int? limit)
     {
         var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
         var guidRequested = Guid.Parse(guid);
