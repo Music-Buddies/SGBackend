@@ -71,7 +71,7 @@ public class UserController : ControllerBase
     [HttpGet("profile-information/{guid}")]
     public async Task<ProfileInformation> GetProfileInformationForUser(string guid)
     {
-        return await GetProfileInformationGuid(Guid.Parse(guid));
+        return await GetProfileInformationGuid(Guid.Parse(guid),  Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value));
     }
 
     [Authorize]
