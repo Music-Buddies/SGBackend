@@ -82,6 +82,10 @@ public class Startup
             options.ClientId = secretsProvider.GetSecret<Secrets>().SpotifyClientId;
             options.ClientSecret = secretsProvider.GetSecret<Secrets>().SpotifyClientSecret;
             options.Scope.Add("user-read-recently-played");
+            // TODO: wait for spotify dashboard fix, then implement create playlist func for spotify
+            //options.Scope.Add("user-read-private");
+            //options.Scope.Add("user-read-read-email");
+            //options.Scope.Add("playlist-modify-private");
 
             options.Events = new OAuthEvents
             {
