@@ -37,19 +37,23 @@ public class AdminController : ControllerBase
     {
         return _secretsProvider.GetSecret<Secrets>().AdminToken == adminToken;
     }
+    
+    [HttpGet("stats")]
+    public async Task<Stats> GetStats()
+    {
+        var summaries = await _dbContext.PlaybackSummaries.ToArrayAsync();
+        var users = await _dbContext.User.ToArrayAsync();
+
+        return new Stats
+        {
+            Users = users.Length,
+            UserMinutes = summaries.Sum(s => s.TotalSeconds)
+        };
+    }
 
     [HttpPost("importUsers")]
     public async Task<IActionResult> ImportUsers(ExportContainer exportContainer)
     {
-        
-       
-        
-        // validate summaries
-        var usersWithSummaries = await _dbContext.User.Include(u => u.PlaybackSummaries).Include(u => u.PlaybackRecords)
-            .ToArrayAsync();
-        
- 
-        
         if (!AdminTokenValid(exportContainer.adminToken)) return Unauthorized();
 
         // import missing media, requirement of the most basic record entity type
@@ -80,18 +84,7 @@ public class AdminController : ControllerBase
 
         // calculate everything for the imported users
         foreach (var dbUser in dbUsers) await _algoService.ProcessImport(dbUser.Id);
-
-        /*
-        // trigger fetch job once, to set last fetched timestamp for users
-        var job = JobBuilder.Create<SpotifyGroupedFetchJob>()
-            .Build();
-        var trigger = TriggerBuilder.Create()
-            .StartNow()
-            .Build();
-
-        var scheduler = await _schedulerFactory.GetScheduler();
-        await scheduler.ScheduleJob(job, trigger);
-        */
+        
         return Ok();
     }
 
@@ -121,4 +114,11 @@ public class ExportContainer
     public string adminToken { get; set; }
     public List<ExportUser> users { get; set; }
     public List<ExportMedium> media { get; set; }
+}
+
+public class Stats
+{
+    public long UserMinutes { get; set; }
+    
+    public long Users { get; set; }
 }
