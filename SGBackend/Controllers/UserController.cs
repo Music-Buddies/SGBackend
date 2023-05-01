@@ -73,8 +73,8 @@ public class UserController : ControllerBase
     {
         var guidGuid = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
         var dbUser = await _dbContext.User.Include(u => u.Stats).Include(u => u.PlaybackRecords)
-            .FirstAsync(u => u.Id == guidGuid);
-        return await GetProfileInformationGuid(dbUser,Guid.Parse(guid));
+            .FirstAsync(u => u.Id == Guid.Parse(guid));
+        return await GetProfileInformationGuid(dbUser,guidGuid);
     }
 
     [Authorize]
