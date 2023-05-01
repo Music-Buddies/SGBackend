@@ -81,7 +81,7 @@ public class UserController : ControllerBase
             return false;
         }
 
-        return true;
+        return false;
     }
 
     [Authorize]
