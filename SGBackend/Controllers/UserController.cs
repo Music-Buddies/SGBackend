@@ -68,13 +68,29 @@ public class UserController : ControllerBase
     }
 
     [Authorize]
+    [HttpGet("valid")]
+    public async Task<bool> TestTokenValid()
+    {
+        var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+        
+        var dbUser = await _dbContext.User.Include(u => u.Stats).Include(u => u.PlaybackRecords)
+            .FirstOrDefaultAsync(u => u.Id == userId);
+
+        if (dbUser == null)
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    [Authorize]
     [HttpGet("profile-information/{guid}")]
     public async Task<ProfileInformation> GetProfileInformationForUser(string guid)
     {
-        var guidGuid = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
         var dbUser = await _dbContext.User.Include(u => u.Stats).Include(u => u.PlaybackRecords)
             .FirstAsync(u => u.Id == Guid.Parse(guid));
-        return await GetProfileInformationGuid(dbUser,guidGuid);
+        return await GetProfileInformationGuid(dbUser,Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value));
     }
 
     [Authorize]
@@ -94,7 +110,7 @@ public class UserController : ControllerBase
         return Ok(await GetProfileInformationGuid(dbUser));
     }
 
-    private async Task<ProfileInformation> GetProfileInformationGuid(User dbUser, Guid? otherUser = null)
+    private async Task<ProfileInformation> GetProfileInformationGuid(User dbUser, Guid? mainUser = null)
     {
         var userId = dbUser.Id;
         var earliestRecord = dbUser.PlaybackRecords.MinBy(r => r.PlayedAt);
@@ -108,15 +124,15 @@ public class UserController : ControllerBase
             language = dbUser.Language
         };
 
-        if (otherUser.HasValue)
+        if (mainUser.HasValue)
         {
             var match = await _dbContext.MutualPlaybackOverviews
                 .Include(m => m.User1)
                 .Include(m => m.User2)
                 .Include(m => m.MutualPlaybackEntries)
                 .FirstAsync(m =>
-                    (m.User1Id == userId && m.User2Id == otherUser) ||
-                    (m.User2Id == userId && m.User1Id == otherUser));
+                    (m.User1Id == userId && m.User2Id == mainUser) ||
+                    (m.User2Id == userId && m.User1Id == mainUser));
 
             var totalListenedSecondsTogether =
                 match.MutualPlaybackEntries.Sum(e => Math.Min(e.PlaybackSecondsUser1, e.PlaybackSecondsUser2));
