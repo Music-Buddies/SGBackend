@@ -31,6 +31,7 @@ public class Startup
 {
     public void ConfigureServices(WebApplicationBuilder builder)
     {
+        AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
         builder.AddSecretsProvider("SG");
         var tempProvider = builder.Services.BuildServiceProvider();
         var secretsProvider = tempProvider.GetRequiredService<ISecretsProvider>();
@@ -53,7 +54,7 @@ public class Startup
             q.UseMicrosoftDependencyInjectionJobFactory();
             q.UsePersistentStore(o =>
             {
-                o.UseMySql(secretsProvider.GetSecret<Secrets>().DBConnectionString);
+                o.UsePostgres(secretsProvider.GetSecret<Secrets>().DBConnectionString);
                 o.UseJsonSerializer();
             });
         });

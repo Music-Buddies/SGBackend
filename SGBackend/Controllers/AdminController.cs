@@ -41,6 +41,15 @@ public class AdminController : ControllerBase
     [HttpPost("importUsers")]
     public async Task<IActionResult> ImportUsers(ExportContainer exportContainer)
     {
+        
+       
+        
+        // validate summaries
+        var usersWithSummaries = await _dbContext.User.Include(u => u.PlaybackSummaries).Include(u => u.PlaybackRecords)
+            .ToArrayAsync();
+        
+ 
+        
         if (!AdminTokenValid(exportContainer.adminToken)) return Unauthorized();
 
         // import missing media, requirement of the most basic record entity type
@@ -72,6 +81,7 @@ public class AdminController : ControllerBase
         // calculate everything for the imported users
         foreach (var dbUser in dbUsers) await _algoService.ProcessImport(dbUser.Id);
 
+        /*
         // trigger fetch job once, to set last fetched timestamp for users
         var job = JobBuilder.Create<SpotifyGroupedFetchJob>()
             .Build();
@@ -81,7 +91,7 @@ public class AdminController : ControllerBase
 
         var scheduler = await _schedulerFactory.GetScheduler();
         await scheduler.ScheduleJob(job, trigger);
-
+        */
         return Ok();
     }
 

@@ -36,7 +36,7 @@ public class SgDbContext : DbContext
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
-        optionsBuilder.UseMySQL(_secretsProvider.GetSecret<Secrets>().DBConnectionString);
+        optionsBuilder.UseNpgsql(_secretsProvider.GetSecret<Secrets>().DBConnectionString);
     }
 
     protected override void OnModelCreating(ModelBuilder modelbuilder)

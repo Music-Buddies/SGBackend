@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace SGBackend.Migrations
 {
-    public partial class InitialCreate : Migration
+    public partial class Init : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {
@@ -13,13 +13,13 @@ namespace SGBackend.Migrations
                 name: "Media",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "char(36)", nullable: false),
-                    Title = table.Column<string>(type: "longtext", nullable: false),
-                    MediumSource = table.Column<int>(type: "int", nullable: false),
-                    LinkToMedium = table.Column<string>(type: "varchar(255)", nullable: false),
-                    ExplicitContent = table.Column<bool>(type: "tinyint(1)", nullable: false),
-                    AlbumName = table.Column<string>(type: "longtext", nullable: false),
-                    ReleaseDate = table.Column<string>(type: "longtext", nullable: false)
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    Title = table.Column<string>(type: "text", nullable: false),
+                    MediumSource = table.Column<int>(type: "integer", nullable: false),
+                    LinkToMedium = table.Column<string>(type: "text", nullable: false),
+                    ExplicitContent = table.Column<bool>(type: "boolean", nullable: false),
+                    AlbumName = table.Column<string>(type: "text", nullable: false),
+                    ReleaseDate = table.Column<string>(type: "text", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -27,27 +27,37 @@ namespace SGBackend.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "User",
+                name: "States",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "char(36)", nullable: false),
-                    Name = table.Column<string>(type: "longtext", nullable: false),
-                    SpotifyId = table.Column<string>(type: "longtext", nullable: true),
-                    SpotifyProfileUrl = table.Column<string>(type: "longtext", nullable: true),
-                    SpotifyRefreshToken = table.Column<string>(type: "longtext", nullable: true)
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    QuartzApplied = table.Column<bool>(type: "boolean", nullable: false),
+                    GroupedFetchJobInstalled = table.Column<bool>(type: "boolean", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_User", x => x.Id);
+                    table.PrimaryKey("PK_States", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Stats",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    LatestFetch = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Stats", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
                 name: "Artists",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "char(36)", nullable: false),
-                    Name = table.Column<string>(type: "longtext", nullable: false),
-                    MediumId = table.Column<Guid>(type: "char(36)", nullable: true)
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    Name = table.Column<string>(type: "text", nullable: false),
+                    MediumId = table.Column<Guid>(type: "uuid", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -63,11 +73,11 @@ namespace SGBackend.Migrations
                 name: "Images",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "char(36)", nullable: false),
-                    imageUrl = table.Column<string>(type: "longtext", nullable: false),
-                    height = table.Column<int>(type: "int", nullable: false),
-                    width = table.Column<int>(type: "int", nullable: false),
-                    MediumId = table.Column<Guid>(type: "char(36)", nullable: true)
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    imageUrl = table.Column<string>(type: "text", nullable: false),
+                    height = table.Column<int>(type: "integer", nullable: false),
+                    width = table.Column<int>(type: "integer", nullable: false),
+                    MediumId = table.Column<Guid>(type: "uuid", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -80,12 +90,35 @@ namespace SGBackend.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "User",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    Name = table.Column<string>(type: "text", nullable: false),
+                    SpotifyId = table.Column<string>(type: "text", nullable: true),
+                    SpotifyProfileUrl = table.Column<string>(type: "text", nullable: true),
+                    SpotifyRefreshToken = table.Column<string>(type: "text", nullable: true),
+                    StatsId = table.Column<Guid>(type: "uuid", nullable: false),
+                    Language = table.Column<int>(type: "integer", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_User", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_User_Stats_StatsId",
+                        column: x => x.StatsId,
+                        principalTable: "Stats",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "MutualPlaybackOverviews",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "char(36)", nullable: false),
-                    User1Id = table.Column<Guid>(type: "char(36)", nullable: false),
-                    User2Id = table.Column<Guid>(type: "char(36)", nullable: false)
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    User1Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    User2Id = table.Column<Guid>(type: "uuid", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -108,11 +141,11 @@ namespace SGBackend.Migrations
                 name: "PlaybackRecords",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "char(36)", nullable: false),
-                    MediumId = table.Column<Guid>(type: "char(36)", nullable: false),
-                    PlayedAt = table.Column<DateTime>(type: "datetime(6)", nullable: false),
-                    PlayedSeconds = table.Column<int>(type: "int", nullable: false),
-                    UserId = table.Column<Guid>(type: "char(36)", nullable: false)
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    MediumId = table.Column<Guid>(type: "uuid", nullable: false),
+                    PlayedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    PlayedSeconds = table.Column<int>(type: "integer", nullable: false),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -135,12 +168,11 @@ namespace SGBackend.Migrations
                 name: "PlaybackSummaries",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "char(36)", nullable: false),
-                    UserId = table.Column<Guid>(type: "char(36)", nullable: false),
-                    MediumId = table.Column<Guid>(type: "char(36)", nullable: false),
-                    TotalSeconds = table.Column<int>(type: "int", nullable: false),
-                    LastListened = table.Column<DateTime>(type: "datetime(6)", nullable: false),
-                    NeedsCalculation = table.Column<bool>(type: "tinyint(1)", nullable: false)
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    MediumId = table.Column<Guid>(type: "uuid", nullable: false),
+                    TotalSeconds = table.Column<int>(type: "integer", nullable: false),
+                    LastListened = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -163,10 +195,11 @@ namespace SGBackend.Migrations
                 name: "MutualPlaybackEntries",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "char(36)", nullable: false),
-                    MediumId = table.Column<Guid>(type: "char(36)", nullable: false),
-                    PlaybackSeconds = table.Column<long>(type: "bigint", nullable: false),
-                    MutualPlaybackOverviewId = table.Column<Guid>(type: "char(36)", nullable: false)
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    MediumId = table.Column<Guid>(type: "uuid", nullable: false),
+                    PlaybackSecondsUser1 = table.Column<long>(type: "bigint", nullable: false),
+                    PlaybackSecondsUser2 = table.Column<long>(type: "bigint", nullable: false),
+                    MutualPlaybackOverviewId = table.Column<Guid>(type: "uuid", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -178,7 +211,7 @@ namespace SGBackend.Migrations
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_MutualPlaybackEntries_MutualPlaybackOverviews_MutualPlayback~",
+                        name: "FK_MutualPlaybackEntries_MutualPlaybackOverviews_MutualPlaybac~",
                         column: x => x.MutualPlaybackOverviewId,
                         principalTable: "MutualPlaybackOverviews",
                         principalColumn: "Id",
@@ -244,6 +277,11 @@ namespace SGBackend.Migrations
                 name: "IX_PlaybackSummaries_UserId",
                 table: "PlaybackSummaries",
                 column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_User_StatsId",
+                table: "User",
+                column: "StatsId");
         }
 
         protected override void Down(MigrationBuilder migrationBuilder)
@@ -264,6 +302,9 @@ namespace SGBackend.Migrations
                 name: "PlaybackSummaries");
 
             migrationBuilder.DropTable(
+                name: "States");
+
+            migrationBuilder.DropTable(
                 name: "MutualPlaybackOverviews");
 
             migrationBuilder.DropTable(
@@ -271,6 +312,9 @@ namespace SGBackend.Migrations
 
             migrationBuilder.DropTable(
                 name: "User");
+
+            migrationBuilder.DropTable(
+                name: "Stats");
         }
     }
 }

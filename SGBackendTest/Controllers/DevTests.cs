@@ -18,6 +18,28 @@ public class DevTests : IClassFixture<WebApplicationFactory<Startup>>
     }
 
     [Fact]
+    public async void ValidateCalculation()
+    {  
+        using var scope = _factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<SgDbContext>();
+        
+        // validate summaries
+        var usersWithSummaries = await context.User.Include(u => u.PlaybackSummaries).Include(u => u.PlaybackRecords)
+            .ToArrayAsync();
+        
+        foreach (var userWithSummary in usersWithSummaries)
+        {
+            var groupedRecords = userWithSummary.PlaybackRecords.GroupBy(pr => pr.MediumId);
+
+            foreach (var playbackRecords in groupedRecords)
+            {
+                var summary = userWithSummary.PlaybackSummaries.First(ps => ps.MediumId == playbackRecords.Key);
+                Assert.Equal(summary.TotalSeconds, playbackRecords.Sum(pr => pr.PlayedSeconds));
+            }
+        }
+    }
+
+    [Fact]
     public async void GetClaesHistory()
     {
         using var scope = _factory.Services.CreateScope();

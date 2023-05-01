@@ -18,14 +18,15 @@ public class PlaybackServiceFixture
         var builder = new ConfigurationBuilder();
         builder.AddUserSecrets<Secrets>();
         IConfiguration configuration = builder.Build();
-
         services.AddScoped<IConfiguration>(_ => configuration);
+        
+        services.AddDevSecretsProvider("SG");
+      
         services.AddExternalApiClients();
         services.AddDbContext<SgDbContext>();
         services.AddScoped<SpotifyConnector>();
         services.AddScoped<RandomizedUserService>();
         services.AddScoped<UserService>();
-        services.AddSingleton<ISecretsProvider, DevSecretsProvider>();
         services.AddSingleton<ParalellAlgoService>();
 
         ServiceProvider = services.BuildServiceProvider();
