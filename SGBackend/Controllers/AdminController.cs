@@ -47,7 +47,7 @@ public class AdminController : ControllerBase
         return new Stats
         {
             Users = users.Length,
-            UserMinutes = summaries.Sum(s => s.TotalSeconds)
+            UserMinutes = summaries.Sum(s => s.TotalSeconds) / 60
         };
     }
 
