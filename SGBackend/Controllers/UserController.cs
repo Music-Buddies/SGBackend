@@ -71,22 +71,32 @@ public class UserController : ControllerBase
     [HttpGet("profile-information/{guid}")]
     public async Task<ProfileInformation> GetProfileInformationForUser(string guid)
     {
-        return await GetProfileInformationGuid(Guid.Parse(guid),  Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value));
+        var guidGuid = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+        var dbUser = await _dbContext.User.Include(u => u.Stats).Include(u => u.PlaybackRecords)
+            .FirstAsync(u => u.Id == guidGuid);
+        return await GetProfileInformationGuid(dbUser,Guid.Parse(guid));
     }
 
     [Authorize]
     [HttpGet("profile-information")]
-    public async Task<ProfileInformation> GetProfileInformation()
+    public async Task<IActionResult> GetProfileInformation()
     {
         var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
-        return await GetProfileInformationGuid(userId);
+        
+        var dbUser = await _dbContext.User.Include(u => u.Stats).Include(u => u.PlaybackRecords)
+            .FirstOrDefaultAsync(u => u.Id == userId);
+
+        if (dbUser == null)
+        {
+            return Unauthorized();
+        }
+        
+        return Ok(await GetProfileInformationGuid(dbUser));
     }
 
-    private async Task<ProfileInformation> GetProfileInformationGuid(Guid userId, Guid? otherUser = null)
+    private async Task<ProfileInformation> GetProfileInformationGuid(User dbUser, Guid? otherUser = null)
     {
-        var dbUser = await _dbContext.User.Include(u => u.Stats).Include(u => u.PlaybackRecords)
-            .FirstAsync(u => u.Id == userId);
-
+        var userId = dbUser.Id;
         var earliestRecord = dbUser.PlaybackRecords.MinBy(r => r.PlayedAt);
         var profileInformation = new ProfileInformation
         {
