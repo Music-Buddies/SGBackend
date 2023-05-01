@@ -3,7 +3,7 @@ version: "3.9"
 # create a local db to which the backend can connect
 # (dotnet run)
 services:
-  sg-mysql:
+  sg-sql:
     restart: always
     image: postgres
     environment:

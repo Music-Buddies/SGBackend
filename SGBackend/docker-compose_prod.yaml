@@ -16,19 +16,16 @@ services:
       options:
         loki-url: ${loki_sink}
         loki-retries: 3
-  sg-mysql:
+  sg-sql:
     restart: always
-    image: mysql:8.0.26
-    cap_add:
-      - SYS_NICE
+    image: postgres
     environment:
-      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
-      - MYSQL_DATABASE=sg
-      - MYSQL_ROOT_HOST=%
+      - POSTGRES_PASSWORD=${SQL_ROOT_PASSWORD}
+      - POSTGRES_DB=sg
     ports:
-      - "188.68.62.150:3310:3306"
+      - "188.68.62.150:5410:5432"
     volumes:
-      - v-sg-mysql:/var/lib/mysql
+      - v-postgres:/var/lib/postgresql
     networks:
       - jitcom_net
     logging:
@@ -38,7 +35,7 @@ services:
         loki-retries: 3
 
 volumes:
-  v-sg-mysql:
+  v-postgres:
 
 networks:
   jitcom_net:
