@@ -31,12 +31,12 @@ public class SpotifyConnector : IContentConnector
         _tokenProvider = tokenProvider;
     }
 
-    public async Task<TokenResponse?> GetAccessTokenUsingRefreshToken(User dbUser)
+    public async Task<TokenResponse?> GetAccessTokenUsingRefreshToken(string spotifyRefreshToken)
     {
         var token = await _spotifyAuthApi.GetTokenFromRefreshToken(new Dictionary<string, object>
         {
             { "grant_type", "refresh_token" },
-            { "refresh_token", dbUser.SpotifyRefreshToken }
+            { "refresh_token", spotifyRefreshToken }
         });
 
         if (token.IsSuccessStatusCode) return token.Content;

@@ -46,7 +46,8 @@ public class UserController : ControllerBase
     {
         var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
         var dbUser = await _dbContext.User.Include(u => u.PlaybackRecords).FirstAsync(u => u.Id == userId);
-        var spotifyToken = await _spotifyConnector.GetAccessTokenUsingRefreshToken(dbUser);
+        if (dbUser.SpotifyRefreshToken == null) return null;
+        var spotifyToken = await _spotifyConnector.GetAccessTokenUsingRefreshToken(dbUser.SpotifyRefreshToken);
 
         if (spotifyToken == null) return null;
 

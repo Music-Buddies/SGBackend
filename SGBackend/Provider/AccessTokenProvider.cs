@@ -20,6 +20,10 @@ public class AccessTokenProvider
 
     public async Task<string?> GetAccessToken(User user)
     {
+        if (user.SpotifyRefreshToken == null)
+        {
+            return null;
+        }
         if (_tokenCache.TryGetValue(user.Id, out var accessToken))
             // check if token is valid
             if (DateTime.Now < accessToken.Fetched.Add(accessToken.ExpiresIn))
@@ -28,9 +32,9 @@ public class AccessTokenProvider
 
         using (var scope = _scopeFactory.CreateScope())
         {
-            var spotifyConnector = scope.ServiceProvider.GetService<SpotifyConnector>();
+            var spotifyConnector = scope.ServiceProvider.GetRequiredService<SpotifyConnector>();
             // token is invalid / doesnt exist yet
-            var tokenResponse = await spotifyConnector.GetAccessTokenUsingRefreshToken(user);
+            var tokenResponse = await spotifyConnector.GetAccessTokenUsingRefreshToken(user.SpotifyRefreshToken);
 
             // TODO: Set userRefreshTokenExpired in User Entity. filter on fetches
 

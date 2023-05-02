@@ -36,7 +36,7 @@ public class SpotifyConnectorTest : IClassFixture<SpotifyConnectorFixture>
         var connector = _serviceProvider.GetService<SpotifyConnector>();
         var user = await db.User.FirstAsync();
 
-        var token = await connector.GetAccessTokenUsingRefreshToken(user);
+        var token = await connector.GetAccessTokenUsingRefreshToken(user.SpotifyRefreshToken);
 
         await connector.FetchAvailableContentHistory(user);
     }
