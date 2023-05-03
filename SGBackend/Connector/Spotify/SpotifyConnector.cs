@@ -51,6 +51,10 @@ public class SpotifyConnector : IContentConnector
         _logger.LogInformation(string.Join(", ", claimsIdentity.Claims.Select(claim => claim.ToString())));
 
         var spotifyUserUrl = claimsIdentity.FindFirst("urn:spotify:url");
+        // user registered freshly
+        var nameClaim = claimsIdentity.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name");
+        var profileUrl = claimsIdentity.FindFirst("urn:spotify:profilepicture");
+        
         if (spotifyUserUrl != null)
         {
             var dbUser = await _dbContext.User
@@ -61,11 +65,11 @@ public class SpotifyConnector : IContentConnector
             if (dbUser != null)
             {
                 // user already exists
-
+                dbUser.SpotifyProfileUrl = profileUrl?.Value;
+                dbUser.Name = nameClaim != null ? nameClaim.Value : string.Empty;
                 if (dbUser.SpotifyRefreshToken == null)
                 {
                     // user disconnected spotify and logged back in again
-
                     // set refresh token again
                     dbUser.SpotifyRefreshToken = context.RefreshToken;
                     await _dbContext.SaveChangesAsync();
@@ -74,15 +78,12 @@ public class SpotifyConnector : IContentConnector
                 {
                     // user simply logged in again - only update refresh token
                     dbUser.SpotifyRefreshToken = context.RefreshToken;
+                    
                     await _dbContext.SaveChangesAsync();
                 }
             }
             else
             {
-                // user registered freshly
-                var nameClaim = claimsIdentity.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name");
-                var profileUrl = claimsIdentity.FindFirst("urn:spotify:profilepicture");
-
                 dbUser = await _userService.AddUser(new User
                 {
                     SpotifyId = spotifyUserUrl.Value,
