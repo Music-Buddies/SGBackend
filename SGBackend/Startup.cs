@@ -40,6 +40,8 @@ public class Startup
 
         builder.Services.AddDbContext<SgDbContext>();
         builder.Services.AddScoped<SpotifyConnector>();
+        builder.Services.AddScoped<StateManager>();
+        builder.Services.AddScoped<TransferService>();
         builder.Services.AddSingleton<JwtProvider>();
         builder.Services.AddScoped<RandomizedUserService>();
         builder.Services.AddScoped<UserService>();
@@ -48,6 +50,7 @@ public class Startup
 
         builder.Services.AddDatabaseDeveloperPageExceptionFilter();
         builder.Services.AddControllers();
+        builder.Services.AddHttpClient();
 
         builder.Services.AddQuartz(q =>
         {
@@ -172,6 +175,46 @@ public class Startup
 
         app.UseSwagger();
         app.UseSwaggerUI();
+        
+        // quartz & job init
+        using (var scope = app.Services.CreateScope())
+        {
+            var services = scope.ServiceProvider;
+            
+            var stateManager = services.GetRequiredService<StateManager>();
+            var dbContext = services.GetRequiredService<SgDbContext>();
+            var state = await stateManager.GetState();
+
+            if (!state.QuartzApplied)
+            {
+                // quartz
+                var quartzTables = File.ReadAllText("generateQuartzTables.sql");
+                await dbContext.Database.ExecuteSqlRawAsync(quartzTables);
+                state.QuartzApplied = true;
+                await dbContext.SaveChangesAsync();
+            }
+
+            if (!state.GroupedFetchJobInstalled)
+            {
+                var schedulerFactory = scope.ServiceProvider.GetRequiredService<ISchedulerFactory>();
+
+                // fetch job
+                var job = JobBuilder.Create<SpotifyGroupedFetchJob>()
+                    .Build();
+
+                var trigger = TriggerBuilder.Create()
+                    .WithIdentity("groupedFetchJob", "fetch")
+                    .WithSchedule(SimpleScheduleBuilder.RepeatHourlyForever(4))
+                    .StartNow()
+                    .Build();
+
+                var scheduler = await schedulerFactory.GetScheduler();
+                await scheduler.ScheduleJob(job, trigger);
+
+                state.GroupedFetchJobInstalled = true;
+                await dbContext.SaveChangesAsync();
+            }
+        }
 
         // Configure the HTTP request pipeline.
         if (app.Environment.IsDevelopment())
@@ -190,8 +233,30 @@ public class Startup
             {
                 var services = scope.ServiceProvider;
 
-                var context = services.GetRequiredService<RandomizedUserService>();
-                //context.GenerateXRandomUsersAndCalc(5).Wait();
+                var config = services.GetRequiredService<IConfiguration>();
+                var stateManager = services.GetRequiredService<StateManager>();
+                var dbContext = services.GetRequiredService<SgDbContext>();
+                var transferService = services.GetRequiredService<TransferService>();
+                var state = await stateManager.GetState();
+
+                var target = config.GetValue<string?>("InitializeFromTarget");
+
+                if (target != null && !state.InitializedFromTarget)
+                {
+                    // initialize from prod
+                    await transferService.ImportFromTarget(target);
+                    state.InitializedFromTarget = true;
+                    await dbContext.SaveChangesAsync();
+                }
+
+                var generateRandomUsers = config.GetValue<bool?>("GenerateRandomUsers");
+                if (generateRandomUsers != null && generateRandomUsers.Value && !state.RandomUsersGenerated)
+                {
+                    var rndService = services.GetRequiredService<RandomizedUserService>();
+                    rndService.GenerateXRandomUsersAndCalc(5).Wait();
+                    state.RandomUsersGenerated = true;
+                    await dbContext.SaveChangesAsync();
+                }
             }
         }
 
@@ -202,54 +267,7 @@ public class Startup
                 context.Request.Scheme = "https";
                 await next();
             });
-
-        // quartz & job init
-        using (var scope = app.Services.CreateScope())
-        {
-            var services = scope.ServiceProvider;
-
-            var dbContext = services.GetRequiredService<SgDbContext>();
-            var state = await dbContext.States.FirstOrDefaultAsync();
-            if (state == null)
-            {
-                dbContext.States.Add(new State
-                {
-                    QuartzApplied = true,
-                    GroupedFetchJobInstalled = true
-                });
-
-                // first initialisations
-
-                // quartz
-                var quartzTables = File.ReadAllText("generateQuartzTables.sql");
-                await dbContext.Database.ExecuteSqlRawAsync(quartzTables);
-
-                await dbContext.SaveChangesAsync();
-
-                var schedulerFactory = scope.ServiceProvider.GetRequiredService<ISchedulerFactory>();
-
-                // fetch job
-                var job = JobBuilder.Create<SpotifyGroupedFetchJob>()
-                    .Build();
-
-                var trigger = TriggerBuilder.Create()
-                    .WithIdentity("groupedFetchJob", "fetch")
-                    .WithSchedule(SimpleScheduleBuilder.RepeatHourlyForever(4))
-                    .StartNow()
-                    .Build();
-
-                var scheduler = await schedulerFactory.GetScheduler();
-                await scheduler.ScheduleJob(job, trigger);
-            }
-        }
-
-        // test loggin
-        using (var scope = app.Services.CreateScope())
-        {
-            var logger = scope.ServiceProvider.GetRequiredService<ILogger<Startup>>();
-            logger.LogInformation("this should be visible in prod aswell");
-        }
-
+        
         app.UseAuthentication();
         app.UseAuthorization();
 

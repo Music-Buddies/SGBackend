@@ -29,3 +29,35 @@ trigger:
   event:
     - push
 
+---
+
+kind: pipeline
+type: ssh
+name: deploy_dev_backend
+
+server:
+  host:
+    from_secret: ssh_host_prod
+  user: root
+  password:
+    from_secret: ssh_password_prod
+
+steps:
+  - name: deploy
+    environment:
+      loki_sink:
+        from_secret: loki_sink
+      SG_SECRETS:
+        from_secret: sg_secrets_dev
+      COMPOSE_PROJECT_NAME: webservicesjitcom
+      SQL_ROOT_PASSWORD:
+        from_secret: sql_root_password_dev
+    commands:
+      - docker compose -f SGBackend/docker-compose_dev.yaml build
+      - docker compose -f SGBackend/docker-compose_dev.yaml up -d
+
+trigger:
+  branch:
+    - dev
+  event:
+    - push
