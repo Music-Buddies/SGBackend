@@ -44,13 +44,13 @@ public class AdminController : ControllerBase
     [HttpGet("stats")]
     public async Task<Stats> GetStats()
     {
-        var summaries = await _dbContext.PlaybackSummaries.ToArrayAsync();
-        var users = await _dbContext.User.ToArrayAsync();
+        var summaries = await _dbContext.PlaybackSummaries.SumAsync(ps => ps.TotalSeconds);
+        var users = await _dbContext.User.CountAsync();
 
         return new Stats
         {
-            Users = users.Length,
-            UserMinutes = summaries.Sum(s => s.TotalSeconds) / 60
+            Users = users,
+            UserMinutes = summaries / 60
         };
     }
 
