@@ -32,10 +32,10 @@ public class Startup
     public void ConfigureServices(WebApplicationBuilder builder)
     {
         AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
-        builder.AddSecretsProvider("SG");
+        builder.AddSecretsProvider();
         var tempProvider = builder.Services.BuildServiceProvider();
         var secretsProvider = tempProvider.GetRequiredService<ISecretsProvider>();
-
+        
         builder.Services.AddExternalApiClients();
 
         builder.Services.AddDbContext<SgDbContext>();
