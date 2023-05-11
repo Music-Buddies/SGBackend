@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Newtonsoft.Json;
 using SGBackend;
 using SGBackend.Connector.Spotify;
 using SGBackend.Entities;
@@ -45,11 +46,12 @@ public class DevTests : IClassFixture<WebApplicationFactory<Startup>>
         using var scope = _factory.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<SgDbContext>();
         var users = await context.User.ToArrayAsync();
-        var sebi = users.First(u => u.Name == "s.claes");
+        var sebi = users.First(u => u.Name == "Sebastian Claes");
 
         var connector = scope.ServiceProvider.GetRequiredService<SpotifyConnector>();
 
         var history = await connector.FetchAvailableContentHistory(sebi);
+        var historyJson = JsonConvert.SerializeObject(history);
     }
 
     [Fact]

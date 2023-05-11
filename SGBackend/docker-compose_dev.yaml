@@ -20,6 +20,8 @@ services:
     environment:
       - POSTGRES_PASSWORD=${SQL_ROOT_PASSWORD}
       - POSTGRES_DB=sg
+    ports:
+      - "188.68.62.150:5411:5432"
     networks:
       - jitcom_net
     logging:

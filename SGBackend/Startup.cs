@@ -36,6 +36,7 @@ public class Startup
         builder.AddSecretsProvider();
         var tempProvider = builder.Services.BuildServiceProvider();
         var secretsProvider = tempProvider.GetRequiredService<ISecretsProvider>();
+        var secrets = secretsProvider.GetSecret<Secrets>();
 
         builder.Services.AddFeatureManagement();
         builder.Services.AddExternalApiClients();
