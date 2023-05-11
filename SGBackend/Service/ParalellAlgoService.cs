@@ -112,7 +112,7 @@ public class ParalellAlgoService
                 .Include(ps => ps.User)
                 .Where(ps => affectedMedia.Contains(ps.Medium) && ps.User != user).ToListAsync();
 
-        var otherSummariesByMedia = otherPlaybackSummaries.Except(upsertedSummariesOfUser).GroupBy(ps => ps.Medium)
+        var otherSummariesByMedia = otherPlaybackSummaries.Except(upsertedSummariesOfUser).GroupBy(ps => ps.MediumId)
             .ToDictionary(g => g.Key, g => g.ToList());
 
         var playbackOverviews = await dbContext.MutualPlaybackOverviews
@@ -127,7 +127,7 @@ public class ParalellAlgoService
 
         foreach (var upsertedSummary in upsertedSummariesOfUser)
         {
-            otherSummariesByMedia.TryGetValue(upsertedSummary.Medium, out var otherSummaries);
+            otherSummariesByMedia.TryGetValue(upsertedSummary.MediumId, out var otherSummaries);
             // there might just be no other summaries for this medium yet
             if (otherSummaries == null) continue;
 
