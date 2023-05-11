@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authentication.OAuth;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
+using Microsoft.FeatureManagement;
 using Microsoft.OpenApi.Models;
 using MySql.EntityFrameworkCore.Extensions;
 using Quartz;
@@ -35,7 +36,8 @@ public class Startup
         builder.AddSecretsProvider();
         var tempProvider = builder.Services.BuildServiceProvider();
         var secretsProvider = tempProvider.GetRequiredService<ISecretsProvider>();
-        
+
+        builder.Services.AddFeatureManagement();
         builder.Services.AddExternalApiClients();
 
         builder.Services.AddDbContext<SgDbContext>();

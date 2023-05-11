@@ -5,6 +5,7 @@ using SecretsProvider;
 using SGBackend.Connector.Spotify;
 using SGBackend.Entities;
 using SGBackend.Models;
+using SGBackend.Provider;
 using SGBackend.Service;
 
 namespace SGBackend.Controllers;
@@ -25,8 +26,10 @@ public class AdminController : ControllerBase
 
     private readonly TransferService _transferService;
 
+    private readonly JwtProvider _jwtProvider;
+    
     public AdminController(ParalellAlgoService algoService, SgDbContext dbContext, UserService userService,
-        ISchedulerFactory schedulerFactory, ISecretsProvider secretsProvider, TransferService transferService)
+        ISchedulerFactory schedulerFactory, ISecretsProvider secretsProvider, TransferService transferService, JwtProvider jwtProvider)
     {
         _algoService = algoService;
         _dbContext = dbContext;
@@ -34,11 +37,38 @@ public class AdminController : ControllerBase
         _schedulerFactory = schedulerFactory;
         _secretsProvider = secretsProvider;
         _transferService = transferService;
+        _jwtProvider = jwtProvider;
     }
 
     private bool AdminTokenValid(string adminToken)
     {
         return _secretsProvider.GetSecret<Secrets>().AdminToken == adminToken;
+    }
+
+    [HttpGet("list-users/{adminPassword}")]
+    public async Task<ActionResult<AdminUser[]>> GetAdminUsers(string adminPassword)
+    {
+        if (!AdminTokenValid(adminPassword)) return Unauthorized();
+        var users = await _dbContext.User.ToArrayAsync();
+        return users.Select(u => new AdminUser
+        {
+            name = u.Name,
+            userId = u.Id.ToString()
+        }).ToArray();
+    }
+    
+    [HttpGet("admin/get-token/{userId}/{adminPassword}")]
+    public async Task<ActionResult<AdminTokenResponse>> GetAdminToken(string userId, string adminPassword)
+    {
+        if (!AdminTokenValid(adminPassword)) return Unauthorized();
+        var guid = Guid.Parse(userId);
+        var user = await _dbContext.User.FirstAsync(u => u.Id == guid);
+        var jwt = _jwtProvider.GetJwt(user);
+        
+        return new AdminTokenResponse
+        {
+            jwt = jwt
+        };
     }
     
     [HttpGet("stats")]
