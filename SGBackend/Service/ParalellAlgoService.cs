@@ -104,20 +104,18 @@ public class ParalellAlgoService
 
         var user = await dbContext.User.FirstAsync(u => u.Id == userId);
 
-        var affectedMedia = upsertedSummariesOfUser.Select(s => s.Medium).Distinct().ToArray();
+        var affectedMedia = upsertedSummariesOfUser.Select(s => s.MediumId).Distinct().ToArray();
 
         var otherPlaybackSummaries =
             await dbContext.PlaybackSummaries
-                .Include(ps => ps.Medium)
                 .Include(ps => ps.User)
-                .Where(ps => affectedMedia.Contains(ps.Medium) && ps.User != user).ToListAsync();
+                .Where(ps => affectedMedia.Contains(ps.MediumId) && ps.User != user).ToListAsync();
 
         var otherSummariesByMedia = otherPlaybackSummaries.Except(upsertedSummariesOfUser).GroupBy(ps => ps.MediumId)
             .ToDictionary(g => g.Key, g => g.ToList());
 
         var playbackOverviews = await dbContext.MutualPlaybackOverviews
             .Include(lts => lts.MutualPlaybackEntries)
-            .ThenInclude(lte => lte.Medium)
             .Include(lts => lts.User1)
             .Include(lts => lts.User2)
             .Where(lts => lts.User1 == user || lts.User2 == user).ToArrayAsync();
@@ -136,7 +134,7 @@ public class ParalellAlgoService
                 var playbackOverview = overviewsByOtherUser[otherSummary.User];
 
                 var mutualPlaybackEntry = playbackOverview.MutualPlaybackEntries
-                    .FirstOrDefault(e => e.Medium == otherSummary.Medium);
+                    .FirstOrDefault(e => e.MediumId == otherSummary.MediumId);
 
 
                 long playbackSecondsUser1;
@@ -166,7 +164,7 @@ public class ParalellAlgoService
                     // create
                     playbackOverview.MutualPlaybackEntries.Add(new MutualPlaybackEntry
                     {
-                        Medium = upsertedSummary.Medium,
+                        MediumId = upsertedSummary.MediumId,
                         PlaybackSecondsUser1 = playbackSecondsUser1,
                         PlaybackSecondsUser2 = playbackSecondsUser2,
                         MutualPlaybackOverview = playbackOverview
