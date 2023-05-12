@@ -33,13 +33,8 @@ public class Startup
     public void ConfigureServices(WebApplicationBuilder builder)
     {
         AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
-        builder.AddSecretsProvider();
-        var tempProvider = builder.Services.BuildServiceProvider();
-        var secretsProvider = tempProvider.GetRequiredService<ISecretsProvider>();
-
         builder.Services.AddFeatureManagement();
         builder.Services.AddExternalApiClients();
-
         builder.Services.AddDbContext<SgDbContext>();
         builder.Services.AddScoped<SpotifyConnector>();
         builder.Services.AddScoped<StateManager>();
@@ -49,11 +44,15 @@ public class Startup
         builder.Services.AddScoped<UserService>();
         builder.Services.AddSingleton<AccessTokenProvider>();
         builder.Services.AddSingleton<ParalellAlgoService>();
-
         builder.Services.AddDatabaseDeveloperPageExceptionFilter();
         builder.Services.AddControllers();
         builder.Services.AddHttpClient();
 
+        // add and build tempt services for using secrets in confs
+        builder.AddSecretsProvider();
+        var tempProvider = builder.Services.BuildServiceProvider();
+        var secretsProvider = tempProvider.GetRequiredService<ISecretsProvider>();
+        
         builder.Services.AddQuartz(q =>
         {
             q.UseMicrosoftDependencyInjectionJobFactory();
@@ -165,47 +164,50 @@ public class Startup
 
     public async Task Configure(WebApplication app)
     {
+        using var scope = app.Services.CreateScope();
+        var services = scope.ServiceProvider;
+        var stateManager = services.GetRequiredService<StateManager>();
+        var dbContext = services.GetRequiredService<SgDbContext>();
+        var state = await stateManager.GetState();
+
+        // generale stage independent inits
+        
         // create db if not already
-        using (var scope = app.Services.CreateScope())
-        {
-            var services = scope.ServiceProvider;
-
-            var context = services.GetRequiredService<SgDbContext>();
-
-            await context.Database.MigrateAsync();
-        }
-
-        app.UseSwagger();
-        app.UseSwaggerUI();
+        var context = services.GetRequiredService<SgDbContext>();
+        await context.Database.MigrateAsync();
         
         // quartz & job init
-        using (var scope = app.Services.CreateScope())
+        var secrets = services.GetRequiredService<ISecretsProvider>().GetSecret<Secrets>();
+        var transferService = services.GetRequiredService<TransferService>();
+
+        if (secrets.InitializeFromTarget != null && secrets.InitializeTargetToken != null &&
+            !state.InitializedFromTarget)
         {
-            var services = scope.ServiceProvider;
-            
-            var stateManager = services.GetRequiredService<StateManager>();
-            var dbContext = services.GetRequiredService<SgDbContext>();
-            var state = await stateManager.GetState();
-            var secrets = services.GetRequiredService<ISecretsProvider>().GetSecret<Secrets>();
-            var transferService = services.GetRequiredService<TransferService>();
+            // initialize from prod
+            await transferService.ImportFromTarget(secrets.InitializeFromTarget, secrets.InitializeTargetToken);
+            state.InitializedFromTarget = true;
+            await dbContext.SaveChangesAsync();
+        }
 
-            if (secrets.InitializedFromTarget != null && secrets.InitializeTargetToken != null && !state.InitializedFromTarget)
+        if (!state.QuartzApplied)
+        {
+            // quartz
+            var quartzTables = File.ReadAllText("generateQuartzTables.sql");
+            await dbContext.Database.ExecuteSqlRawAsync(quartzTables);
+            state.QuartzApplied = true;
+            await dbContext.SaveChangesAsync();
+        }
+        
+        // prod inits
+        if (app.Environment.IsProduction())
+        {
+            app.Use(async (context, next) =>
             {
-                // initialize from prod
-                await transferService.ImportFromTarget(secrets.InitializedFromTarget, secrets.InitializeTargetToken);
-                state.InitializedFromTarget = true;
-                await dbContext.SaveChangesAsync();
-            }
+                context.Request.Host = new HostString("suggest-app.com");
+                context.Request.Scheme = "https";
+                await next();
+            });
             
-            if (!state.QuartzApplied)
-            {
-                // quartz
-                var quartzTables = File.ReadAllText("generateQuartzTables.sql");
-                await dbContext.Database.ExecuteSqlRawAsync(quartzTables);
-                state.QuartzApplied = true;
-                await dbContext.SaveChangesAsync();
-            }
-
             if (!state.GroupedFetchJobInstalled)
             {
                 var schedulerFactory = scope.ServiceProvider.GetRequiredService<ISchedulerFactory>();
@@ -228,7 +230,7 @@ public class Startup
             }
         }
 
-        // Configure the HTTP request pipeline.
+        // dev inits
         if (app.Environment.IsDevelopment())
         {
             // overwrite host for oauth redirect
@@ -240,35 +242,23 @@ public class Startup
                 context.Request.Host = new HostString("localhost:5173");
                 await next();
             });
-
-            using (var scope = app.Services.CreateScope())
+            
+            var config = services.GetRequiredService<IConfiguration>();
+            
+            var generateRandomUsers = config.GetValue<bool?>("GenerateRandomUsers");
+            if (generateRandomUsers != null && generateRandomUsers.Value && !state.RandomUsersGenerated)
             {
-                var services = scope.ServiceProvider;
-
-                var config = services.GetRequiredService<IConfiguration>();
-                var stateManager = services.GetRequiredService<StateManager>();
-                var dbContext = services.GetRequiredService<SgDbContext>();
-                var state = await stateManager.GetState();
-                
-                var generateRandomUsers = config.GetValue<bool?>("GenerateRandomUsers");
-                if (generateRandomUsers != null && generateRandomUsers.Value && !state.RandomUsersGenerated)
-                {
-                    var rndService = services.GetRequiredService<RandomizedUserService>();
-                    rndService.GenerateXRandomUsersAndCalc(5).Wait();
-                    state.RandomUsersGenerated = true;
-                    await dbContext.SaveChangesAsync();
-                }
+                var rndService = services.GetRequiredService<RandomizedUserService>();
+                rndService.GenerateXRandomUsersAndCalc(5).Wait();
+                state.RandomUsersGenerated = true;
+                await dbContext.SaveChangesAsync();
             }
         }
-
-        if (app.Environment.IsProduction())
-            app.Use(async (context, next) =>
-            {
-                context.Request.Host = new HostString("suggest-app.com");
-                context.Request.Scheme = "https";
-                await next();
-            });
         
+        // default usings
+        app.UseSwagger();
+        app.UseSwaggerUI();
+
         app.UseAuthentication();
         app.UseAuthorization();
 
