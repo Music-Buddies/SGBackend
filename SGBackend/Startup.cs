@@ -32,6 +32,12 @@ public class Startup
 {
     public void ConfigureServices(WebApplicationBuilder builder)
     {
+        // add and build tempt services for using secrets in configs
+        // needs to be first (used in service extensions)
+        builder.AddSecretsProvider();
+        var tempProvider = builder.Services.BuildServiceProvider();
+        var secretsProvider = tempProvider.GetRequiredService<ISecretsProvider>();
+        
         AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
         builder.Services.AddFeatureManagement();
         builder.Services.AddExternalApiClients();
@@ -47,11 +53,6 @@ public class Startup
         builder.Services.AddDatabaseDeveloperPageExceptionFilter();
         builder.Services.AddControllers();
         builder.Services.AddHttpClient();
-
-        // add and build tempt services for using secrets in confs
-        builder.AddSecretsProvider();
-        var tempProvider = builder.Services.BuildServiceProvider();
-        var secretsProvider = tempProvider.GetRequiredService<ISecretsProvider>();
         
         builder.Services.AddQuartz(q =>
         {
@@ -166,15 +167,16 @@ public class Startup
     {
         using var scope = app.Services.CreateScope();
         var services = scope.ServiceProvider;
-        var stateManager = services.GetRequiredService<StateManager>();
+        
+        // init db firstly (needed by following operations)
         var dbContext = services.GetRequiredService<SgDbContext>();
+        await dbContext.Database.MigrateAsync();
+        
+        // fetch state once
+        var stateManager = services.GetRequiredService<StateManager>();
         var state = await stateManager.GetState();
 
         // generale stage independent inits
-        
-        // create db if not already
-        var context = services.GetRequiredService<SgDbContext>();
-        await context.Database.MigrateAsync();
         
         // quartz & job init
         var secrets = services.GetRequiredService<ISecretsProvider>().GetSecret<Secrets>();
