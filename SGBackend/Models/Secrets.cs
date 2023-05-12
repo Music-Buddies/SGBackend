@@ -11,4 +11,6 @@ public class Secrets
     public string SpotifyClientSecret { get; set; }
     public string DBConnectionString { get; set; }
     public string AdminToken { get; set; }
+    public string? InitializeTargetToken { get; set; }
+    public string? InitializedFromTarget { get; set; }
 }

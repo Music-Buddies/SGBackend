@@ -14,23 +14,20 @@ public class TransferService
     private readonly UserService _userService;
     private readonly ParalellAlgoService _algoService;
     private readonly IHttpClientFactory _httpClientFactory;
-    private readonly ISecretsProvider _secretsProvider;
     
-    public TransferService(SgDbContext dbContext, UserService userService, ParalellAlgoService algoService, IHttpClientFactory httpClientFactory, ISecretsProvider secretsProvider)
+    public TransferService(SgDbContext dbContext, UserService userService, ParalellAlgoService algoService, IHttpClientFactory httpClientFactory)
     {
         _dbContext = dbContext;
         _userService = userService;
         _algoService = algoService;
         _httpClientFactory = httpClientFactory;
-        _secretsProvider = secretsProvider;
     }
 
-    public async Task ImportFromTarget(string targetSuggestBackend)
+    public async Task ImportFromTarget(string targetSuggestBackend, string adminToken)
     {
-        var secrets = _secretsProvider.GetSecret<Secrets>();
         var message = new HttpRequestMessage(
             HttpMethod.Post,
-            targetSuggestBackend + $"/admin/exportUsers?adminToken={secrets.AdminToken}");
+            targetSuggestBackend + $"/admin/exportUsers?adminToken={adminToken}");
 
         var httpClient = _httpClientFactory.CreateClient();
         var httpResponseMessage = await httpClient.SendAsync(message);

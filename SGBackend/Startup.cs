@@ -36,7 +36,6 @@ public class Startup
         builder.AddSecretsProvider();
         var tempProvider = builder.Services.BuildServiceProvider();
         var secretsProvider = tempProvider.GetRequiredService<ISecretsProvider>();
-        var secrets = secretsProvider.GetSecret<Secrets>();
 
         builder.Services.AddFeatureManagement();
         builder.Services.AddExternalApiClients();
@@ -187,7 +186,17 @@ public class Startup
             var stateManager = services.GetRequiredService<StateManager>();
             var dbContext = services.GetRequiredService<SgDbContext>();
             var state = await stateManager.GetState();
+            var secrets = services.GetRequiredService<ISecretsProvider>().GetSecret<Secrets>();
+            var transferService = services.GetRequiredService<TransferService>();
 
+            if (secrets.InitializedFromTarget != null && secrets.InitializeTargetToken != null && !state.InitializedFromTarget)
+            {
+                // initialize from prod
+                await transferService.ImportFromTarget(secrets.InitializedFromTarget, secrets.InitializeTargetToken);
+                state.InitializedFromTarget = true;
+                await dbContext.SaveChangesAsync();
+            }
+            
             if (!state.QuartzApplied)
             {
                 // quartz
@@ -239,19 +248,8 @@ public class Startup
                 var config = services.GetRequiredService<IConfiguration>();
                 var stateManager = services.GetRequiredService<StateManager>();
                 var dbContext = services.GetRequiredService<SgDbContext>();
-                var transferService = services.GetRequiredService<TransferService>();
                 var state = await stateManager.GetState();
-
-                var target = config.GetValue<string?>("InitializeFromTarget");
-
-                if (target != null && !state.InitializedFromTarget)
-                {
-                    // initialize from prod
-                    await transferService.ImportFromTarget(target);
-                    state.InitializedFromTarget = true;
-                    await dbContext.SaveChangesAsync();
-                }
-
+                
                 var generateRandomUsers = config.GetValue<bool?>("GenerateRandomUsers");
                 if (generateRandomUsers != null && generateRandomUsers.Value && !state.RandomUsersGenerated)
                 {
