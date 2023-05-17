@@ -41,6 +41,35 @@ public class ParalellAlgoService
         }
     }
 
+    public async Task FetchAndCalcUsers()
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<SgDbContext>();
+        var sp = scope.ServiceProvider.GetRequiredService<SpotifyConnector>();
+        
+        var users = await dbContext.User.Include(u => u.Stats).ToArrayAsync();
+
+        await Parallel.ForEachAsync(users, async (user, token) =>
+        {
+            var watch = Stopwatch.StartNew();
+            _logger.LogInformation("Fetching for User {userId}", user.Id);
+            var availableHistory = await sp.FetchAvailableContentHistory(user);
+            if (availableHistory == null)// no access token
+                return ;
+
+            await Process(user.Id, availableHistory);
+
+            user.Stats.LatestFetch = DateTime.Now;
+
+            watch.Stop();
+            var elapsedMs = watch.ElapsedMilliseconds;
+
+            _logger.LogInformation("Fetched for User {userId} took {ms} ms", user.Id, elapsedMs);
+        });
+        
+        await dbContext.SaveChangesAsync();
+    }
+
     /// <summary>
     /// </summary>
     /// <param name="userId"></param>

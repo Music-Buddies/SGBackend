@@ -20,7 +20,7 @@ public class UserControllerTest : IClassFixture<WebApplicationFactory<Startup>>
     {
         _factory = factory;
     }
-
+    
     [Fact]
     public async void TestGetIndependentRecs()
     {

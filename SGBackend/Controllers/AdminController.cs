@@ -46,6 +46,13 @@ public class AdminController : ControllerBase
         return secrets.AdminToken == adminToken;
     }
 
+    [HttpGet("fetch-and-calc-all-users/{adminPassword}")]
+    public async Task<IActionResult> FetchAndCalcUsers()
+    {
+        await _algoService.FetchAndCalcUsers();
+        return Ok();
+    }
+
     [HttpGet("list-users/{adminPassword}")]
     public async Task<ActionResult<AdminUser[]>> GetAdminUsers(string adminPassword)
     {
