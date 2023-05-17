@@ -6,7 +6,7 @@ public class IndependentRecommendation
 {
     public long orderValue { get; set; }
     
-    public string userName { get; set; }
+    public string username { get; set; }
 
     public string profileUrl { get; set; }
     

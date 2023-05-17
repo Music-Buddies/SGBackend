@@ -259,7 +259,7 @@ public class UserController : ControllerBase
                     explicitFlag = unknownSummary.Medium.ExplicitContent,
                     profileUrl = otherUser.SpotifyProfileUrl,
                     songTitle = unknownSummary.Medium.Title,
-                    userName = otherUser.Name,
+                    username = otherUser.Name,
                     linkToMedia = unknownSummary.Medium.LinkToMedium,
                     allArtists = unknownSummary.Medium.Artists.Select(a => a.Name).ToArray()
                 });
