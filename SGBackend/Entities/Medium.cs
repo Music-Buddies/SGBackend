@@ -44,6 +44,11 @@ public class Medium : BaseEntity
         };
     }
 
+    public MediumImage[] GetMediumImages()
+    {
+        return SortBySize(Images);
+    }
+
     public MediaSummary ToRecommendedMedia(long listenedSeconds)
     {
         return new MediaSummary

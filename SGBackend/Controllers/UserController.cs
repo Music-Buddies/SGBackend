@@ -214,6 +214,60 @@ public class UserController : ControllerBase
     }
 
     [Authorize]
+    [HttpGet("matches/recommended-media")]
+    public async Task<IndependentRecommendation[]> GetIndependentRecommendedMedia(int? limit)
+    {
+        var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+        
+        var loggedInUser = await _dbContext.User.Include(u => u.PlaybackSummaries)
+            .FirstAsync(u => u.Id == userId);
+        var knownMedia = loggedInUser.PlaybackSummaries.Select(ps => ps.MediumId).ToHashSet();
+
+        var overviews = await _dbContext.MutualPlaybackOverviews
+            .Include(o => o.MutualPlaybackEntries)
+            .Include(o => o.User1)
+            .Include(o => o.User2)
+            //.Include(o => o.User1).ThenInclude(u => u.PlaybackSummaries).ThenInclude(ps => ps.Medium).ThenInclude(m => m.Images)
+            //.Include(o => o.User2).ThenInclude(u => u.PlaybackSummaries).ThenInclude(ps => ps.Medium).ThenInclude(m => m.Images)
+            .Where(o => (o.User1Id == userId || o.User2Id == userId) && o.MutualPlaybackEntries.Any()).ToArrayAsync();
+
+        var users = overviews.Select(o => o.GetOtherUser(loggedInUser).Id).ToHashSet();
+
+        var userSummaries = await _dbContext.PlaybackSummaries.Where(ps => users.Contains(ps.UserId))
+            .Include(ps => ps.Medium).ThenInclude(m => m.Images).ToArrayAsync();
+
+        var userSummariesGrouping = userSummaries.GroupBy(us => us.UserId)
+            .ToDictionary(g => g.Key, g => g.ToArray());
+        
+        var recommendations = new List<IndependentRecommendation>();
+        
+        foreach (var overview in overviews)
+        {
+            var otherUser = overview.GetOtherUser(loggedInUser);
+            var listenedTogetherSeconds =
+                overview.MutualPlaybackEntries.Sum(e => Math.Min(e.PlaybackSecondsUser1, e.PlaybackSecondsUser2));
+            
+            foreach (var unknownSummary in userSummariesGrouping[otherUser.Id].Where(ps => !knownMedia.Contains(ps.MediumId)))
+            {
+                recommendations.Add(new IndependentRecommendation
+                {
+                    orderValue = listenedTogetherSeconds * unknownSummary.TotalSeconds,
+                    listenedSeconds = unknownSummary.TotalSeconds,
+                    albumImages = unknownSummary.Medium.GetMediumImages(),
+                    albumName = unknownSummary.Medium.AlbumName,
+                    explicitFlag = unknownSummary.Medium.ExplicitContent,
+                    profileUrl = otherUser.SpotifyProfileUrl,
+                    songTitle = unknownSummary.Medium.Title,
+                    userName = otherUser.Name,
+                    linkToMedia = unknownSummary.Medium.LinkToMedium
+                });
+            }
+        }
+
+        return recommendations.OrderByDescending(r => r.orderValue).ToArray();
+    }
+
+    [Authorize]
     [HttpGet("matches/{guid}/together-consumed/tracks")]
     public async Task<MediaSummary[]> GetListenedTogetherTracks(string guid, int? limit)
     {

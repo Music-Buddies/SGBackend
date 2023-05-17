@@ -22,6 +22,14 @@ public class UserControllerTest : IClassFixture<WebApplicationFactory<Startup>>
     }
 
     [Fact]
+    public async void TestGetIndependentRecs()
+    {
+        var client = await TestSetupAsync();
+        var resp = await client.GetAsync($"/user/matches/recommended-media");
+        var recs = await resp.Content.ReadFromJsonAsync<IndependentRecommendation[]>();
+    }
+
+    [Fact]
     public async void TestAdminUserToken()
     {
         using var scope = _factory.Services.CreateScope();
@@ -53,6 +61,13 @@ public class UserControllerTest : IClassFixture<WebApplicationFactory<Startup>>
         Assert.NotNull(profileInformation.username);
         Assert.NotNull(profileInformation.profileImage);
         Assert.NotNull(profileInformation.trackingSince);
+    }
+
+    [Fact]
+    public async void GetIndependentRecommended()
+    {
+        var client = await TestSetupAsync();
+        var response = await client.GetAsync("/user/matches/recommended-media");
     }
 
     [Fact]
