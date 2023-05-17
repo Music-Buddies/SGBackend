@@ -9,7 +9,7 @@ public class MediaSummary
     public string[] allArtists { get; set; }
 
     public bool explicitFlag { get; set; }
-    
+
     public long? listenedSeconds { get; set; }
 
     public long? listenedSecondsYou { get; set; }

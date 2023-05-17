@@ -1,21 +1,20 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
-using SecretsProvider;
 using SGBackend.Controllers;
 using SGBackend.Entities;
-using SGBackend.Models;
 
 namespace SGBackend.Service;
 
 public class TransferService
 {
+    private readonly ParalellAlgoService _algoService;
 
     private readonly SgDbContext _dbContext;
-    private readonly UserService _userService;
-    private readonly ParalellAlgoService _algoService;
     private readonly IHttpClientFactory _httpClientFactory;
-    
-    public TransferService(SgDbContext dbContext, UserService userService, ParalellAlgoService algoService, IHttpClientFactory httpClientFactory)
+    private readonly UserService _userService;
+
+    public TransferService(SgDbContext dbContext, UserService userService, ParalellAlgoService algoService,
+        IHttpClientFactory httpClientFactory)
     {
         _dbContext = dbContext;
         _userService = userService;
@@ -80,7 +79,7 @@ public class TransferService
         // export all users and their records (the rest will be recalculated)
         var users = await _dbContext.User.Where(u => !u.Name.StartsWith("Dummy")).Include(u => u.PlaybackRecords)
             .ThenInclude(pr => pr.Medium).ToArrayAsync();
-        
+
         return new ExportContainer
         {
             media = media.Select(m => m.ToExportMedium()).ToList(),

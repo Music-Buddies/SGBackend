@@ -20,14 +20,14 @@ public class DevTests : IClassFixture<WebApplicationFactory<Startup>>
 
     [Fact]
     public async void ValidateCalculation()
-    {  
+    {
         using var scope = _factory.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<SgDbContext>();
-        
+
         // validate summaries
         var usersWithSummaries = await context.User.Include(u => u.PlaybackSummaries).Include(u => u.PlaybackRecords)
             .ToArrayAsync();
-        
+
         foreach (var userWithSummary in usersWithSummaries)
         {
             var groupedRecords = userWithSummary.PlaybackRecords.GroupBy(pr => pr.MediumId);

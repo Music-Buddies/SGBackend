@@ -1,5 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
-using SGBackend.Entities;
+﻿using SGBackend.Entities;
+using EntityFrameworkQueryableExtensions = Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions;
 
 namespace SGBackend.Service;
 
@@ -14,7 +14,7 @@ public class StateManager
 
     public async Task<State> GetState()
     {
-        var state = await _dbContext.States.FirstOrDefaultAsync();
+        var state = await EntityFrameworkQueryableExtensions.FirstOrDefaultAsync(_dbContext.States);
         if (state == null)
         {
             state = new State();
@@ -24,5 +24,4 @@ public class StateManager
 
         return state;
     }
-    
 }

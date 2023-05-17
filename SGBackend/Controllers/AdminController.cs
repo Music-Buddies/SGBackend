@@ -2,7 +2,6 @@
 using Microsoft.EntityFrameworkCore;
 using Quartz;
 using SecretsProvider;
-using SGBackend.Connector.Spotify;
 using SGBackend.Entities;
 using SGBackend.Models;
 using SGBackend.Provider;
@@ -18,18 +17,19 @@ public class AdminController : ControllerBase
 
     private readonly SgDbContext _dbContext;
 
+    private readonly JwtProvider _jwtProvider;
+
     private readonly ISchedulerFactory _schedulerFactory;
 
     private readonly ISecretsProvider _secretsProvider;
 
-    private readonly UserService _userService;
-
     private readonly TransferService _transferService;
 
-    private readonly JwtProvider _jwtProvider;
-    
+    private readonly UserService _userService;
+
     public AdminController(ParalellAlgoService algoService, SgDbContext dbContext, UserService userService,
-        ISchedulerFactory schedulerFactory, ISecretsProvider secretsProvider, TransferService transferService, JwtProvider jwtProvider)
+        ISchedulerFactory schedulerFactory, ISecretsProvider secretsProvider, TransferService transferService,
+        JwtProvider jwtProvider)
     {
         _algoService = algoService;
         _dbContext = dbContext;
@@ -64,7 +64,7 @@ public class AdminController : ControllerBase
             userId = u.Id.ToString()
         }).ToArray();
     }
-    
+
     [HttpGet("get-token/{userId}/{adminPassword}")]
     public async Task<ActionResult<AdminTokenResponse>> GetAdminToken(string userId, string adminPassword)
     {
@@ -72,13 +72,13 @@ public class AdminController : ControllerBase
         var guid = Guid.Parse(userId);
         var user = await _dbContext.User.FirstAsync(u => u.Id == guid);
         var jwt = _jwtProvider.GetJwt(user);
-        
+
         return new AdminTokenResponse
         {
             jwt = jwt
         };
     }
-    
+
     [HttpGet("stats")]
     public async Task<Stats> GetStats()
     {
@@ -98,7 +98,7 @@ public class AdminController : ControllerBase
         if (!AdminTokenValid(exportContainer.adminToken)) return Unauthorized();
 
         await _transferService.ImportUsers(exportContainer);
-        
+
         return Ok();
     }
 
@@ -121,6 +121,6 @@ public class ExportContainer
 public class Stats
 {
     public long UserMinutes { get; set; }
-    
+
     public long Users { get; set; }
 }

@@ -1,5 +1,4 @@
-﻿using Refit;
-using SecretsProvider;
+﻿using SecretsProvider;
 
 namespace SGBackend.Models;
 

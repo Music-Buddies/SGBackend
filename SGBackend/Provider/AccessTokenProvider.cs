@@ -20,10 +20,7 @@ public class AccessTokenProvider
 
     public async Task<string?> GetAccessToken(User user)
     {
-        if (user.SpotifyRefreshToken == null)
-        {
-            return null;
-        }
+        if (user.SpotifyRefreshToken == null) return null;
         if (_tokenCache.TryGetValue(user.Id, out var accessToken))
             // check if token is valid
             if (DateTime.Now < accessToken.Fetched.Add(accessToken.ExpiresIn))

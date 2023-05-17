@@ -46,28 +46,28 @@ public class ParalellAlgoService
         using var scope = _scopeFactory.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<SgDbContext>();
         var sp = scope.ServiceProvider.GetRequiredService<SpotifyConnector>();
-        
+
         var users = await dbContext.User.Include(u => u.Stats).ToArrayAsync();
-        
+
         var watch = Stopwatch.StartNew();
         _logger.LogInformation("Fetching for Users");
 
         await Parallel.ForEachAsync(users, async (user, token) =>
         {
             var availableHistory = await sp.FetchAvailableContentHistory(user);
-            if (availableHistory == null)// no access token
-                return ;
+            if (availableHistory == null) // no access token
+                return;
 
             await Process(user.Id, availableHistory);
 
             user.Stats.LatestFetch = DateTime.Now;
         });
-        
+
         watch.Stop();
         var elapsedMs = watch.ElapsedMilliseconds;
 
         _logger.LogInformation("Fetched for Users took {ms} ms", elapsedMs);
-        
+
         await dbContext.SaveChangesAsync();
     }
 

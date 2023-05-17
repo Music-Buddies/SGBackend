@@ -73,14 +73,11 @@ public class UserController : ControllerBase
     public async Task<bool> TestTokenValid()
     {
         var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
-        
+
         var dbUser = await _dbContext.User.Include(u => u.Stats).Include(u => u.PlaybackRecords)
             .FirstOrDefaultAsync(u => u.Id == userId);
 
-        if (dbUser == null)
-        {
-            return false;
-        }
+        if (dbUser == null) return false;
 
         return true;
     }
@@ -91,7 +88,7 @@ public class UserController : ControllerBase
     {
         var dbUser = await _dbContext.User.Include(u => u.Stats).Include(u => u.PlaybackRecords)
             .FirstAsync(u => u.Id == Guid.Parse(guid));
-        return await GetProfileInformationGuid(dbUser,Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value));
+        return await GetProfileInformationGuid(dbUser, Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value));
     }
 
     [Authorize]
@@ -99,15 +96,12 @@ public class UserController : ControllerBase
     public async Task<IActionResult> GetProfileInformation()
     {
         var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
-        
+
         var dbUser = await _dbContext.User.Include(u => u.Stats).Include(u => u.PlaybackRecords)
             .FirstOrDefaultAsync(u => u.Id == userId);
 
-        if (dbUser == null)
-        {
-            return Unauthorized();
-        }
-        
+        if (dbUser == null) return Unauthorized();
+
         return Ok(await GetProfileInformationGuid(dbUser));
     }
 
@@ -139,9 +133,8 @@ public class UserController : ControllerBase
                 match.MutualPlaybackEntries.Sum(e => Math.Min(e.PlaybackSecondsUser1, e.PlaybackSecondsUser2));
 
             profileInformation.totalTogetherListenedSeconds = totalListenedSecondsTogether;
-
         }
-        
+
         return profileInformation;
     }
 
@@ -171,14 +164,10 @@ public class UserController : ControllerBase
 
         PlaybackSummary[] summaries;
         if (limit.HasValue)
-        {
             summaries = await summariesQuery.Take(limit.Value).ToArrayAsync();
-        }
         else
-        {
             summaries = await summariesQuery.ToArrayAsync();
-        }
-        
+
         return summaries.Select(ps => ps.Medium.ToRecommendedMedia(ps.TotalSeconds))
             .OrderByDescending(ms => ms.listenedSeconds)
             .ToArray();
@@ -198,17 +187,13 @@ public class UserController : ControllerBase
             .OrderByDescending(m =>
                 m.MutualPlaybackEntries.Sum(e => Math.Min(e.PlaybackSecondsUser1, e.PlaybackSecondsUser2)))
             .Where(m => m.User1 == dbUser || m.User2 == dbUser);
-        
+
         MutualPlaybackOverview[] matches;
 
         if (limit.HasValue)
-        {
             matches = await query.Take(limit.Value).ToArrayAsync();
-        }
         else
-        {
             matches = await query.ToArrayAsync();
-        }
 
         return MatchesHelper.CreateMatchesArray(matches.GroupBy(m => m.GetOtherUser(dbUser)));
     }
@@ -218,7 +203,7 @@ public class UserController : ControllerBase
     public async Task<IndependentRecommendation[]> GetIndependentRecommendedMedia(int? limit)
     {
         var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
-        
+
         var loggedInUser = await _dbContext.User.Include(u => u.PlaybackSummaries)
             .FirstAsync(u => u.Id == userId);
         var knownMedia = loggedInUser.PlaybackSummaries.Select(ps => ps.MediumId).ToHashSet();
@@ -239,17 +224,17 @@ public class UserController : ControllerBase
 
         var userSummariesGrouping = userSummaries.GroupBy(us => us.UserId)
             .ToDictionary(g => g.Key, g => g.ToArray());
-        
+
         var recommendations = new List<IndependentRecommendation>();
-        
+
         foreach (var overview in overviews)
         {
             var otherUser = overview.GetOtherUser(loggedInUser);
             var listenedTogetherSeconds =
                 overview.MutualPlaybackEntries.Sum(e => Math.Min(e.PlaybackSecondsUser1, e.PlaybackSecondsUser2));
-            
-            foreach (var unknownSummary in userSummariesGrouping[otherUser.Id].Where(ps => !knownMedia.Contains(ps.MediumId)))
-            {
+
+            foreach (var unknownSummary in userSummariesGrouping[otherUser.Id]
+                         .Where(ps => !knownMedia.Contains(ps.MediumId)))
                 recommendations.Add(new IndependentRecommendation
                 {
                     orderValue = listenedTogetherSeconds * unknownSummary.TotalSeconds,
@@ -263,13 +248,9 @@ public class UserController : ControllerBase
                     linkToMedia = unknownSummary.Medium.LinkToMedium,
                     allArtists = unknownSummary.Medium.Artists.Select(a => a.Name).ToArray()
                 });
-            }
         }
 
-        if (limit.HasValue)
-        {
-            return recommendations.OrderByDescending(r => r.orderValue).Take(limit.Value).ToArray();
-        }
+        if (limit.HasValue) return recommendations.OrderByDescending(r => r.orderValue).Take(limit.Value).ToArray();
 
         return recommendations.OrderByDescending(r => r.orderValue).ToArray();
     }
@@ -320,12 +301,12 @@ public class UserController : ControllerBase
         });
 
         if (limit.HasValue)
-        {
             // all mutual playback results, 
-            return tracks.OrderByDescending(ms => Math.Min(ms.listenedSecondsYou.Value, ms.listenedSecondsMatch.Value)).Take(limit.Value).ToArray();
-        }
-       
-        return tracks.OrderByDescending(ms => Math.Min(ms.listenedSecondsYou.Value, ms.listenedSecondsMatch.Value)).ToArray();
+            return tracks.OrderByDescending(ms => Math.Min(ms.listenedSecondsYou.Value, ms.listenedSecondsMatch.Value))
+                .Take(limit.Value).ToArray();
+
+        return tracks.OrderByDescending(ms => Math.Min(ms.listenedSecondsYou.Value, ms.listenedSecondsMatch.Value))
+            .ToArray();
     }
 
     [Authorize]
@@ -351,11 +332,9 @@ public class UserController : ControllerBase
             .Select(ps => ps.Medium.ToRecommendedMedia(ps.TotalSeconds));
 
         if (limit.HasValue)
-        {
             return summaries.OrderByDescending(ms => ms.listenedSeconds)
                 .Take(limit.Value).ToArray();
-        }
-        
+
         return summaries.OrderByDescending(ms => ms.listenedSeconds).ToArray();
     }
 }

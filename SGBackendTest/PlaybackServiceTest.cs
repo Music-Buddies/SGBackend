@@ -19,9 +19,9 @@ public class PlaybackServiceFixture
         builder.AddUserSecrets<Secrets>();
         IConfiguration configuration = builder.Build();
         services.AddScoped<IConfiguration>(_ => configuration);
-        
+
         services.AddDevSecretsProvider("SG");
-      
+
         services.AddExternalApiClients();
         services.AddDbContext<SgDbContext>();
         services.AddScoped<SpotifyConnector>();

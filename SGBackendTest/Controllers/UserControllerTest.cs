@@ -1,4 +1,3 @@
-using System.Configuration;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
@@ -20,12 +19,12 @@ public class UserControllerTest : IClassFixture<WebApplicationFactory<Startup>>
     {
         _factory = factory;
     }
-    
+
     [Fact]
     public async void TestGetIndependentRecs()
     {
         var client = await TestSetupAsync();
-        var resp = await client.GetAsync($"/user/matches/recommended-media");
+        var resp = await client.GetAsync("/user/matches/recommended-media");
         var recs = await resp.Content.ReadFromJsonAsync<IndependentRecommendation[]>();
     }
 
@@ -36,7 +35,7 @@ public class UserControllerTest : IClassFixture<WebApplicationFactory<Startup>>
         var adminToken = scope.ServiceProvider.GetRequiredService<ISecretsProvider>().GetSecret<Secrets>().AdminToken;
         var user = await scope.ServiceProvider.GetRequiredService<SgDbContext>().User.FirstAsync();
         var client = await TestSetupAsync();
-        
+
         var resp = await client.GetAsync($"/admin/get-token/{user.Id.ToString()}/{adminToken}");
         var jwt = await resp.Content.ReadFromJsonAsync<AdminTokenResponse>();
         Assert.NotNull(jwt);

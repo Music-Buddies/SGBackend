@@ -54,7 +54,7 @@ public class SpotifyConnector : IContentConnector
         // user registered freshly
         var nameClaim = claimsIdentity.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name");
         var profileUrl = claimsIdentity.FindFirst("urn:spotify:profilepicture");
-        
+
         if (spotifyUserUrl != null)
         {
             var dbUser = await _dbContext.User
@@ -78,7 +78,7 @@ public class SpotifyConnector : IContentConnector
                 {
                     // user simply logged in again - only update refresh token
                     dbUser.SpotifyRefreshToken = context.RefreshToken;
-                    
+
                     await _dbContext.SaveChangesAsync();
                 }
             }

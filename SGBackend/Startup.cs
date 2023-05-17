@@ -37,7 +37,7 @@ public class Startup
         builder.AddSecretsProvider();
         var tempProvider = builder.Services.BuildServiceProvider();
         var secretsProvider = tempProvider.GetRequiredService<ISecretsProvider>();
-        
+
         AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
         builder.Services.AddFeatureManagement();
         builder.Services.AddExternalApiClients();
@@ -53,7 +53,7 @@ public class Startup
         builder.Services.AddDatabaseDeveloperPageExceptionFilter();
         builder.Services.AddControllers();
         builder.Services.AddHttpClient();
-        
+
         builder.Services.AddQuartz(q =>
         {
             q.UseMicrosoftDependencyInjectionJobFactory();
@@ -167,17 +167,17 @@ public class Startup
     {
         using var scope = app.Services.CreateScope();
         var services = scope.ServiceProvider;
-        
+
         // init db firstly (needed by following operations)
         var dbContext = services.GetRequiredService<SgDbContext>();
         await dbContext.Database.MigrateAsync();
-        
+
         // fetch state once
         var stateManager = services.GetRequiredService<StateManager>();
         var state = await stateManager.GetState();
 
         // generale stage independent inits
-        
+
         // quartz & job init
         var secrets = services.GetRequiredService<ISecretsProvider>().GetSecret<Secrets>();
         var transferService = services.GetRequiredService<TransferService>();
@@ -199,7 +199,7 @@ public class Startup
             state.QuartzApplied = true;
             await dbContext.SaveChangesAsync();
         }
-        
+
         // prod inits
         if (app.Environment.IsProduction())
         {
@@ -209,7 +209,7 @@ public class Startup
                 context.Request.Scheme = "https";
                 await next();
             });
-            
+
             if (!state.GroupedFetchJobInstalled)
             {
                 var schedulerFactory = scope.ServiceProvider.GetRequiredService<ISchedulerFactory>();
@@ -244,9 +244,9 @@ public class Startup
                 context.Request.Host = new HostString("localhost:5173");
                 await next();
             });
-            
+
             var config = services.GetRequiredService<IConfiguration>();
-            
+
             var generateRandomUsers = config.GetValue<bool?>("GenerateRandomUsers");
             if (generateRandomUsers != null && generateRandomUsers.Value && !state.RandomUsersGenerated)
             {
@@ -256,7 +256,7 @@ public class Startup
                 await dbContext.SaveChangesAsync();
             }
         }
-        
+
         // default usings
         app.UseSwagger();
         app.UseSwaggerUI();
