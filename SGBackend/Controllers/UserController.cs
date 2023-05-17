@@ -266,6 +266,11 @@ public class UserController : ControllerBase
             }
         }
 
+        if (limit.HasValue)
+        {
+            return recommendations.OrderByDescending(r => r.orderValue).Take(limit.Value).ToArray();
+        }
+
         return recommendations.OrderByDescending(r => r.orderValue).ToArray();
     }
 
