@@ -10,9 +10,11 @@ public class IndependentRecommendation
 
     public string profileUrl { get; set; }
     
-    public long listenedSeconds { get; set; }
+    public long listenedSecondsMatch { get; set; }
     
     public MediumImage[] albumImages { get; set; }
+    
+    public string[] allArtists { get; set; }
 
     public string linkToMedia { get; set; }
 

@@ -234,6 +234,7 @@ public class UserController : ControllerBase
         var users = overviews.Select(o => o.GetOtherUser(loggedInUser).Id).ToHashSet();
 
         var userSummaries = await _dbContext.PlaybackSummaries.Where(ps => users.Contains(ps.UserId))
+            .Include(ps => ps.Medium).ThenInclude(m => m.Artists)
             .Include(ps => ps.Medium).ThenInclude(m => m.Images).ToArrayAsync();
 
         var userSummariesGrouping = userSummaries.GroupBy(us => us.UserId)
@@ -252,14 +253,15 @@ public class UserController : ControllerBase
                 recommendations.Add(new IndependentRecommendation
                 {
                     orderValue = listenedTogetherSeconds * unknownSummary.TotalSeconds,
-                    listenedSeconds = unknownSummary.TotalSeconds,
+                    listenedSecondsMatch = unknownSummary.TotalSeconds,
                     albumImages = unknownSummary.Medium.GetMediumImages(),
                     albumName = unknownSummary.Medium.AlbumName,
                     explicitFlag = unknownSummary.Medium.ExplicitContent,
                     profileUrl = otherUser.SpotifyProfileUrl,
                     songTitle = unknownSummary.Medium.Title,
                     userName = otherUser.Name,
-                    linkToMedia = unknownSummary.Medium.LinkToMedium
+                    linkToMedia = unknownSummary.Medium.LinkToMedium,
+                    allArtists = unknownSummary.Medium.Artists.Select(a => a.Name).ToArray()
                 });
             }
         }
