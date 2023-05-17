@@ -1,7 +1,11 @@
+using System.Configuration;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using SecretsProvider;
 using SGBackend;
+using SGBackend.Entities;
 using SGBackend.Models;
 using SGBackend.Provider;
 using SGBackend.Service;
@@ -17,6 +21,18 @@ public class UserControllerTest : IClassFixture<WebApplicationFactory<Startup>>
         _factory = factory;
     }
 
+    [Fact]
+    public async void TestAdminUserToken()
+    {
+        using var scope = _factory.Services.CreateScope();
+        var adminToken = scope.ServiceProvider.GetRequiredService<ISecretsProvider>().GetSecret<Secrets>().AdminToken;
+        var user = await scope.ServiceProvider.GetRequiredService<SgDbContext>().User.FirstAsync();
+        var client = await TestSetupAsync();
+        
+        var resp = await client.GetAsync($"/admin/get-token/{user.Id.ToString()}/{adminToken}");
+        var jwt = await resp.Content.ReadFromJsonAsync<AdminTokenResponse>();
+        Assert.NotNull(jwt);
+    }
 
     [Fact]
     public async void SpotifyDisconnect()

@@ -42,7 +42,8 @@ public class AdminController : ControllerBase
 
     private bool AdminTokenValid(string adminToken)
     {
-        return _secretsProvider.GetSecret<Secrets>().AdminToken == adminToken;
+        var secrets = _secretsProvider.GetSecret<Secrets>();
+        return secrets.AdminToken == adminToken;
     }
 
     [HttpGet("list-users/{adminPassword}")]
@@ -57,7 +58,7 @@ public class AdminController : ControllerBase
         }).ToArray();
     }
     
-    [HttpGet("admin/get-token/{userId}/{adminPassword}")]
+    [HttpGet("get-token/{userId}/{adminPassword}")]
     public async Task<ActionResult<AdminTokenResponse>> GetAdminToken(string userId, string adminPassword)
     {
         if (!AdminTokenValid(adminPassword)) return Unauthorized();
