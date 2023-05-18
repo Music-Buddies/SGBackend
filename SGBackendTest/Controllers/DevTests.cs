@@ -19,6 +19,36 @@ public class DevTests : IClassFixture<WebApplicationFactory<Startup>>
     }
 
     [Fact]
+    public async void UserWithoutMatch()
+    {
+        using var scope = _factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<SgDbContext>();
+        
+        
+        var users = await context.User.ToArrayAsync();
+        
+        foreach (var user in users)
+        {
+            var overviews = await context.MutualPlaybackOverviews.Include(o => o.MutualPlaybackEntries)
+                .Where(o => o.User1Id == user.Id || o.User2Id == user.Id).ToArrayAsync();
+            var noMatches = overviews.All(o => !o.MutualPlaybackEntries.Any());
+            
+        }
+    }
+
+    [Fact]
+
+    public async void FetchJoey()
+    {
+        using var scope = _factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<SgDbContext>();
+        var connector = scope.ServiceProvider.GetRequiredService<SpotifyConnector>();
+        var joey = await context.User.FirstAsync(u => u.Name == "Joey");
+
+        var history = await connector.FetchAvailableContentHistory(joey);
+    }
+
+    [Fact]
     public async void ValidateCalculation()
     {
         using var scope = _factory.Services.CreateScope();
