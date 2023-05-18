@@ -269,7 +269,7 @@ public class UserController : ControllerBase
                     profileUrl = otherUser.SpotifyProfileUrl,
                     songTitle = unknownSummary.Medium.Title,
                     username = otherUser.Name,
-                    linkToMedia = unknownSummary.Medium.LinkToMedium,
+                    linkToMedia =  $"spotify:track:{unknownSummary.Medium.LinkToMedium.Split("/").Last()}",
                     allArtists = unknownSummary.Medium.Artists.Select(a => a.Name).ToArray(),
                     hidden = hiddenMediaSet.Contains(unknownSummary.MediumId),
                     mediumId = unknownSummary.MediumId.ToString()
