@@ -27,7 +27,7 @@ public class Medium : BaseEntity
 
     public string ReleaseDate { get; set; }
 
-    public MediaSummary ToTogetherConsumedTrack(long listenedSecondsMatch, long listenedSecondsYou)
+    public MediaSummary ToTogetherConsumedTrack(long listenedSecondsMatch, long listenedSecondsYou, bool hidden)
     {
         return new MediaSummary
         {
@@ -40,7 +40,9 @@ public class Medium : BaseEntity
             albumName = AlbumName,
             releaseDate = ReleaseDate,
             listenedSecondsYou = listenedSecondsYou,
-            listenedSecondsMatch = listenedSecondsMatch
+            listenedSecondsMatch = listenedSecondsMatch,
+            hidden = hidden,
+            mediumId = Id.ToString()
         };
     }
 
@@ -49,7 +51,7 @@ public class Medium : BaseEntity
         return SortBySize(Images);
     }
 
-    public MediaSummary ToRecommendedMedia(long listenedSeconds)
+    public MediaSummary ToRecommendedMedia(long listenedSeconds, bool hidden)
     {
         return new MediaSummary
         {
@@ -61,7 +63,9 @@ public class Medium : BaseEntity
             linkToMedia = $"spotify:track:{LinkToMedium.Split("/").Last()}",
             albumName = AlbumName,
             releaseDate = ReleaseDate,
-            listenedSeconds = listenedSeconds
+            listenedSeconds = listenedSeconds,
+            hidden = hidden,
+            mediumId = Id.ToString()
         };
     }
 

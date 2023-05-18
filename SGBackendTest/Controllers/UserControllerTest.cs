@@ -1,4 +1,6 @@
 using System.Net.Http.Json;
+using System.Text;
+using System.Text.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -21,13 +23,48 @@ public class UserControllerTest : IClassFixture<WebApplicationFactory<Startup>>
     }
 
     [Fact]
-    public async void TestGetIndependentRecs()
+    public async void TestHiddenMediaIndependent()
     {
-        var client = await TestSetupAsync();
-        var resp = await client.GetAsync("/user/matches/recommended-media");
-        var recs = await resp.Content.ReadFromJsonAsync<IndependentRecommendation[]>();
+        var client = await TestSetupAsyncWithUser();
+        var initialRecs = await (await client.HttpClient.GetAsync("/user/matches/recommended-media?limit=10")).Content.ReadFromJsonAsync<IndependentRecommendation[]>();
+        Assert.True(initialRecs.All(rec => !rec.hidden));
+        
+        var postHidden = await client.HttpClient.PostAsync("/user/hidden-media", new StringContent(
+            JsonSerializer.Serialize(new HideMedia
+            {
+                origin = HiddenOrigin.Discover,
+                mediumId = initialRecs[0].mediumId
+
+            }), Encoding.UTF8, "application/json"));
+        
+        Assert.True(postHidden.IsSuccessStatusCode);
+        
+        var recsWithHidden = await (await client.HttpClient.GetAsync("/user/matches/recommended-media?limit=10")).Content.ReadFromJsonAsync<IndependentRecommendation[]>();
+        Assert.True(recsWithHidden.Any(rec => rec.hidden));
     }
 
+    [Fact]
+    public async void TestHiddenMediaDiscover()
+    {
+        var client = await TestSetupAsyncWithUser();
+        var initialSummaries =  await (await client.HttpClient.GetAsync("/user/spotify/personal-summary?limit=10")).Content.ReadFromJsonAsync<MediaSummary[]>();
+        Assert.True(initialSummaries.All(rec => !rec.hidden));
+        
+        var postHidden = await client.HttpClient.PostAsync("/user/hidden-media", new StringContent(
+            JsonSerializer.Serialize(new HideMedia
+            {
+                origin = HiddenOrigin.PersonalHistory,
+                mediumId = initialSummaries[0].mediumId
+
+            }), Encoding.UTF8, "application/json"));
+        
+        Assert.True(postHidden.IsSuccessStatusCode);
+        
+        // test if hidden in summary
+        var summariesWithHidden =  await (await client.HttpClient.GetAsync("/user/spotify/personal-summary?limit=10")).Content.ReadFromJsonAsync<MediaSummary[]>();
+        Assert.True(summariesWithHidden.Any(rec => rec.hidden));
+    }
+    
     [Fact]
     public async void TestAdminUserToken()
     {
@@ -61,14 +98,7 @@ public class UserControllerTest : IClassFixture<WebApplicationFactory<Startup>>
         Assert.NotNull(profileInformation.profileImage);
         Assert.NotNull(profileInformation.trackingSince);
     }
-
-    [Fact]
-    public async void GetIndependentRecommended()
-    {
-        var client = await TestSetupAsync();
-        var response = await client.GetAsync("/user/matches/recommended-media");
-    }
-
+    
     [Fact]
     public async void GetPersonalSummary()
     {
@@ -146,4 +176,29 @@ public class UserControllerTest : IClassFixture<WebApplicationFactory<Startup>>
 
         return client;
     }
+    
+    private async Task<TestSetupReturn> TestSetupAsyncWithUser()
+    {
+        using var scope = _factory.Services.CreateScope();
+        var scopedRandomizedUserService = scope.ServiceProvider.GetService<RandomizedUserService>();
+        var scopedJwtProvider = scope.ServiceProvider.GetService<JwtProvider>();
+        var users = await scopedRandomizedUserService.GenerateXRandomUsersAndCalc(2);
+        var token = scopedJwtProvider.GetJwt(users.FirstOrDefault());
+
+        var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Add("Authorization", "Bearer " + token);
+
+        return new TestSetupReturn
+        {
+            HttpClient = client,
+            User = users.FirstOrDefault()
+        };
+    }
+}
+
+public class TestSetupReturn
+{
+    public HttpClient HttpClient { get; set; }
+    
+    public User User { get; set; }
 }

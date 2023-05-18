@@ -24,6 +24,23 @@ public class UserController : ControllerBase
     }
 
     [Authorize]
+    [HttpPost("hidden-media")]
+    public async Task<IActionResult> PostHideMedia(HideMedia hideMedia)
+    {
+        var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+        var dbUser = await _dbContext.User.Include(u => u.HiddenMedia).FirstAsync(u => u.Id == userId);
+        
+        dbUser.HiddenMedia.Add(new HiddenMedia
+        {
+            HiddenMediumId = Guid.Parse(hideMedia.mediumId),
+            HiddenOrigin = hideMedia.origin
+        });
+
+        await _dbContext.SaveChangesAsync();
+        return Ok();
+    }
+
+    [Authorize]
     [HttpPatch("settings")]
     public async Task<IActionResult> PatchSettings(UserSettings settings)
     {
@@ -156,6 +173,9 @@ public class UserController : ControllerBase
 
     private async Task<MediaSummary[]> GetSummaryForGuid(Guid userId, int? limit)
     {
+        var hiddenMedia = await _dbContext.HiddenMedia.Where(hm => hm.UserId == userId && hm.HiddenOrigin == HiddenOrigin.PersonalHistory).ToArrayAsync();
+        var hiddenMediaHashSet = hiddenMedia.Select(hm => hm.HiddenMediumId).ToHashSet();
+        
         var summariesQuery = _dbContext.PlaybackSummaries
             .Include(s => s.Medium).ThenInclude(m => m.Artists)
             .Include(ps => ps.Medium).ThenInclude(m => m.Images)
@@ -168,7 +188,7 @@ public class UserController : ControllerBase
         else
             summaries = await summariesQuery.ToArrayAsync();
 
-        return summaries.Select(ps => ps.Medium.ToRecommendedMedia(ps.TotalSeconds))
+        return summaries.Select(ps => ps.Medium.ToRecommendedMedia(ps.TotalSeconds, hiddenMediaHashSet.Contains(ps.MediumId)))
             .OrderByDescending(ms => ms.listenedSeconds)
             .ToArray();
     }
@@ -204,8 +224,12 @@ public class UserController : ControllerBase
     {
         var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
 
-        var loggedInUser = await _dbContext.User.Include(u => u.PlaybackSummaries)
+        var loggedInUser = await _dbContext.User.Include(u => u.HiddenMedia).Include(u => u.PlaybackSummaries)
             .FirstAsync(u => u.Id == userId);
+
+        var hiddenMediaSet = loggedInUser.HiddenMedia.Where(hm => hm.HiddenOrigin == HiddenOrigin.Discover)
+            .Select(hm => hm.HiddenMediumId).ToHashSet();
+        
         var knownMedia = loggedInUser.PlaybackSummaries.Select(ps => ps.MediumId).ToHashSet();
 
         var overviews = await _dbContext.MutualPlaybackOverviews
@@ -246,11 +270,21 @@ public class UserController : ControllerBase
                     songTitle = unknownSummary.Medium.Title,
                     username = otherUser.Name,
                     linkToMedia = unknownSummary.Medium.LinkToMedium,
-                    allArtists = unknownSummary.Medium.Artists.Select(a => a.Name).ToArray()
+                    allArtists = unknownSummary.Medium.Artists.Select(a => a.Name).ToArray(),
+                    hidden = hiddenMediaSet.Contains(unknownSummary.MediumId),
+                    mediumId = unknownSummary.MediumId.ToString()
                 });
         }
 
-        if (limit.HasValue) return recommendations.OrderByDescending(r => r.orderValue).Take(limit.Value).ToArray();
+        if (limit.HasValue)
+        {
+            // get number of hidden in limit range 
+            var numberHiddenInRange = recommendations.OrderByDescending(r => r.orderValue).Take(limit.Value)
+                .Count(rec => rec.hidden);
+            
+            // always return limit + amount of hidden tracks
+            return recommendations.OrderByDescending(r => r.orderValue).Take(limit.Value + numberHiddenInRange).ToArray();
+        }
 
         return recommendations.OrderByDescending(r => r.orderValue).ToArray();
     }
@@ -261,12 +295,23 @@ public class UserController : ControllerBase
     {
         var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
         var guidRequested = Guid.Parse(guid);
-
-        var loggedInUser = await _dbContext.User.Include(u => u.PlaybackSummaries).ThenInclude(ps => ps.Medium)
+        
+        var loggedInUser = await _dbContext.User.Include(u => u.HiddenMedia).Include(u => u.PlaybackSummaries).ThenInclude(ps => ps.Medium)
             .FirstAsync(u => u.Id == userId);
-
+        
         var requestedUser =
-            await _dbContext.User.Include(u => u.PlaybackSummaries).FirstAsync(u => u.Id == guidRequested);
+            await _dbContext.User.Include(u => u.PlaybackSummaries).Include(u => u.HiddenMedia).FirstAsync(u => u.Id == guidRequested);
+
+        // collect hidden media, whether user or match hid it, it should not be displayed
+        var hiddenMediaSet = new HashSet<Guid>();
+        foreach (var media in loggedInUser.HiddenMedia.Where(hm => hm.HiddenOrigin == HiddenOrigin.PersonalHistory))
+        {
+            hiddenMediaSet.Add(media.HiddenMediumId);
+        }
+        foreach (var media in requestedUser.HiddenMedia.Where(hm => hm.HiddenOrigin == HiddenOrigin.PersonalHistory))
+        {
+            hiddenMediaSet.Add(media.HiddenMediumId);
+        }
 
         var match = await _dbContext.MutualPlaybackOverviews
             .Include(m => m.User1)
@@ -297,7 +342,7 @@ public class UserController : ControllerBase
                 listenedSecondsYou = m.PlaybackSecondsUser2;
             }
 
-            return m.Medium.ToTogetherConsumedTrack(listenedSecondsMatch, listenedSecondsYou);
+            return m.Medium.ToTogetherConsumedTrack(listenedSecondsMatch, listenedSecondsYou, hiddenMediaSet.Contains(m.MediumId));
         });
 
         if (limit.HasValue)
@@ -326,10 +371,14 @@ public class UserController : ControllerBase
             .Include(u => u.PlaybackSummaries)
             .ThenInclude(ps => ps.Medium)
             .ThenInclude(m => m.Images)
+            .Include(u => u.HiddenMedia)
             .FirstAsync(u => u.Id == guidRequested);
-
+        
+        // add hide flag from personal hidden media
+        var hiddenMediaHashSet = requestedUser.HiddenMedia.Where(hm => hm.HiddenOrigin == HiddenOrigin.PersonalHistory).Select(hm => hm.HiddenMediumId).ToHashSet();
+        
         var summaries = requestedUser.PlaybackSummaries.Where(ps => !knownMedia.Contains(ps.Medium))
-            .Select(ps => ps.Medium.ToRecommendedMedia(ps.TotalSeconds));
+            .Select(ps => ps.Medium.ToRecommendedMedia(ps.TotalSeconds, hiddenMediaHashSet.Contains(ps.MediumId)));
 
         if (limit.HasValue)
             return summaries.OrderByDescending(ms => ms.listenedSeconds)

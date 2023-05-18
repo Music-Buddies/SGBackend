@@ -4,7 +4,12 @@ namespace SGBackend.Models;
 
 public class IndependentRecommendation
 {
+    
+    public string mediumId { get; set; }
+    
     public long orderValue { get; set; }
+    
+    public bool hidden { get; set; }
 
     public string username { get; set; }
 

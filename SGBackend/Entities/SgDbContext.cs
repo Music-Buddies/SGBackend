@@ -13,6 +13,8 @@ public class SgDbContext : DbContext
         _secretsProvider = secretsProvider;
     }
 
+    public DbSet<HiddenMedia> HiddenMedia { get; set; }
+
     public DbSet<User> User { get; set; }
 
     public DbSet<Medium> Media { get; set; }

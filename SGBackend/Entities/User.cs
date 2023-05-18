@@ -20,6 +20,8 @@ public class User : BaseEntity
 
     public List<PlaybackSummary> PlaybackSummaries { get; set; } = new();
 
+    public List<HiddenMedia> HiddenMedia { get; set; } = new();
+
     public Stats Stats { get; set; } = new();
 
     // default locale is eng

@@ -4,11 +4,15 @@ namespace SGBackend.Models;
 
 public class MediaSummary
 {
+    public string mediumId { get; set; }
+    
     public string songTitle { get; set; }
 
     public string[] allArtists { get; set; }
 
     public bool explicitFlag { get; set; }
+    
+    public bool hidden { get; set; }
 
     public long? listenedSeconds { get; set; }
 
