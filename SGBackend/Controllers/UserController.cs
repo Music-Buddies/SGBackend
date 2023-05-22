@@ -301,27 +301,21 @@ public class UserController : ControllerBase
 
             foreach (var unknownSummary in userSummariesGrouping[otherUser.Id]
                          .Where(ps => !knownMedia.Contains(ps.MediumId)))
-
-                // only return non hidden
-                if (!hiddenMediaSet.Contains(unknownSummary.MediumId))
+                recommendations.Add(new IndependentRecommendation
                 {
-                    recommendations.Add(new IndependentRecommendation
-                    {
-                        orderValue = listenedTogetherSeconds * unknownSummary.TotalSeconds,
-                        listenedSecondsMatch = unknownSummary.TotalSeconds,
-                        albumImages = unknownSummary.Medium.GetMediumImages(),
-                        albumName = unknownSummary.Medium.AlbumName,
-                        explicitFlag = unknownSummary.Medium.ExplicitContent,
-                        profileUrl = otherUser.SpotifyProfileUrl,
-                        songTitle = unknownSummary.Medium.Title,
-                        username = otherUser.Name,
-                        linkToMedia =  $"spotify:track:{unknownSummary.Medium.LinkToMedium.Split("/").Last()}",
-                        allArtists = unknownSummary.Medium.Artists.Select(a => a.Name).ToArray(),
-                        hidden = hiddenMediaSet.Contains(unknownSummary.MediumId),
-                        mediumId = unknownSummary.MediumId.ToString()
-                    });
-                }
-               
+                    orderValue = listenedTogetherSeconds * unknownSummary.TotalSeconds,
+                    listenedSecondsMatch = unknownSummary.TotalSeconds,
+                    albumImages = unknownSummary.Medium.GetMediumImages(),
+                    albumName = unknownSummary.Medium.AlbumName,
+                    explicitFlag = unknownSummary.Medium.ExplicitContent,
+                    profileUrl = otherUser.SpotifyProfileUrl,
+                    songTitle = unknownSummary.Medium.Title,
+                    username = otherUser.Name,
+                    linkToMedia =  $"spotify:track:{unknownSummary.Medium.LinkToMedium.Split("/").Last()}",
+                    allArtists = unknownSummary.Medium.Artists.Select(a => a.Name).ToArray(),
+                    hidden = hiddenMediaSet.Contains(unknownSummary.MediumId),
+                    mediumId = unknownSummary.MediumId.ToString()
+                });
         }
 
         if (limit.HasValue)

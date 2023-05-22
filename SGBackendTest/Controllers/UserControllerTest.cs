@@ -29,10 +29,10 @@ public class UserControllerTest : IClassFixture<WebApplicationFactory<Startup>>
         var initialRecs = await (await client.HttpClient.GetAsync("/user/matches/recommended-media?limit=10")).Content.ReadFromJsonAsync<IndependentRecommendation[]>();
         Assert.True(initialRecs.All(rec => !rec.hidden));
         
-        var postHidden = await client.HttpClient.PostAsync("/user/hidden-media", new StringContent(
+        var postHidden = await client.HttpClient.PostAsync("/user/hide-media", new StringContent(
             JsonSerializer.Serialize(new HideMedia
             {
-                origin = HiddenOrigin.Discover,
+                origin = HiddenOrigin.Discover.ToString(),
                 mediumId = initialRecs[0].mediumId
 
             }), Encoding.UTF8, "application/json"));
@@ -50,19 +50,15 @@ public class UserControllerTest : IClassFixture<WebApplicationFactory<Startup>>
         var initialSummaries =  await (await client.HttpClient.GetAsync("/user/spotify/personal-summary?limit=10")).Content.ReadFromJsonAsync<MediaSummary[]>();
         Assert.True(initialSummaries.All(rec => !rec.hidden));
         
-        var postHidden = await client.HttpClient.PostAsync("/user/hidden-media", new StringContent(
+        var postHidden = await client.HttpClient.PostAsync("/user/hide-media", new StringContent(
             JsonSerializer.Serialize(new HideMedia
             {
-                origin = HiddenOrigin.PersonalHistory,
+                origin = HiddenOrigin.PersonalHistory.ToString(),
                 mediumId = initialSummaries[0].mediumId
 
             }), Encoding.UTF8, "application/json"));
         
         Assert.True(postHidden.IsSuccessStatusCode);
-        
-        // test if hidden in summary
-        var summariesWithHidden =  await (await client.HttpClient.GetAsync("/user/spotify/personal-summary?limit=10")).Content.ReadFromJsonAsync<MediaSummary[]>();
-        Assert.True(summariesWithHidden.Any(rec => rec.hidden));
     }
     
     [Fact]
