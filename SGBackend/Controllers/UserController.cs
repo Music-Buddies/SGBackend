@@ -24,7 +24,7 @@ public class UserController : ControllerBase
     }
 
     [Authorize]
-    [HttpPost("hidden-media")]
+    [HttpPost("hide-media")]
     public async Task<IActionResult> PostHideMedia(HideMedia hideMedia)
     {
         var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
@@ -48,7 +48,7 @@ public class UserController : ControllerBase
     }
     
     [Authorize]
-    [HttpDelete("hidden-media")]
+    [HttpDelete("hide-media")]
     public async Task<IActionResult> DeleteHideMedia(HideMedia hideMedia)
     {
         var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
