@@ -1,5 +1,7 @@
 # Suggest Backend
 
+Swagger can be found at `/swagger`.
+
 ## Local development
 
 1. Set secrets like described in https://github.com/Suggest-App/SGSecrets.
@@ -10,3 +12,4 @@ If there are any database changes you have to reset the database (since migratio
 To do that run `docker compose down -v`, followed by `docker compose up -d` to create a fresh database.
 
 When you then run `dotnet run`, the backend will initialize the database again on startup.
+
