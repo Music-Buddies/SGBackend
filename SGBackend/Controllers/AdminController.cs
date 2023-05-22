@@ -46,6 +46,28 @@ public class AdminController : ControllerBase
         return secrets.AdminToken == adminToken;
     }
 
+    [HttpGet("login-with-token/{loginToken}")]
+    public async Task<ActionResult<AdminTokenResponse>> LoginWithToken(string loginToken)
+    {
+        if (string.IsNullOrEmpty(loginToken))
+        {
+            return Unauthorized();
+        }
+        
+        var user = await _dbContext.User.FirstOrDefaultAsync(u => u.LoginToken == loginToken);
+        if (user != null)
+        {
+            var jwt = _jwtProvider.GetJwt(user);
+
+            return new AdminTokenResponse
+            {
+                jwt = jwt
+            };
+        }
+
+        return Unauthorized();
+    }
+    
     [HttpGet("fetch-and-calc-all-users/{adminPassword}")]
     public async Task<IActionResult> FetchAndCalcUsers()
     {

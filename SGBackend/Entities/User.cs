@@ -15,6 +15,8 @@ public class User : BaseEntity
     public string? SpotifyProfileUrl { get; set; }
 
     public string? SpotifyRefreshToken { get; set; }
+    
+    public string? LoginToken { get; set; }
 
     public List<PlaybackRecord> PlaybackRecords { get; set; } = new();
 
