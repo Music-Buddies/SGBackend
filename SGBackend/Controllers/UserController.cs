@@ -46,6 +46,32 @@ public class UserController : ControllerBase
         await _dbContext.SaveChangesAsync();
         return Ok();
     }
+    
+    [Authorize]
+    [HttpDelete("hidden-media")]
+    public async Task<IActionResult> DeleteHideMedia(HideMedia hideMedia)
+    {
+        var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+        var dbUser = await _dbContext.User.Include(u => u.HiddenMedia).FirstAsync(u => u.Id == userId);
+        
+        if (Enum.TryParse(hideMedia.origin, true, out HiddenOrigin origin))
+        {
+            HiddenMedia? hideMediaDb = dbUser.HiddenMedia.FirstOrDefault(m =>
+                m.HiddenMediumId == Guid.Parse(hideMedia.mediumId) && m.HiddenOrigin == origin);
+
+            if (hideMediaDb != null)
+            {
+                dbUser.HiddenMedia.Remove(hideMediaDb);
+            }
+        }
+        else
+        {
+            return BadRequest("could not parse origin");
+        }
+
+        await _dbContext.SaveChangesAsync();
+        return Ok();
+    }
 
     [Authorize]
     [HttpPatch("settings")]
