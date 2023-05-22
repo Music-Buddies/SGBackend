@@ -159,7 +159,7 @@ public class UserController : ControllerBase
     [HttpGet("spotify/personal-summary/{guid}")]
     public async Task<MediaSummary[]> GetPersonalSummaryOfOtherUser(string guid, int? limit)
     {
-        return await GetSummaryForGuid(Guid.Parse(guid), limit);
+        return (await GetSummaryForGuid(Guid.Parse(guid), limit)).Where(s => !s.hidden).ToArray();
     }
 
     [Authorize]
@@ -168,7 +168,16 @@ public class UserController : ControllerBase
     {
         var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
 
-        return await GetSummaryForGuid(userId, limit);
+        return (await GetSummaryForGuid(userId, limit)).Where(s => !s.hidden).ToArray();
+    }
+    
+    [Authorize]
+    [HttpGet("spotify/personal-summary/hidden")]
+    public async Task<MediaSummary[]> GetPersonalSummaryHidden(int? limit)
+    {
+        var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+
+        return (await GetSummaryForGuid(userId, limit)).Where(s => s.hidden).ToArray();
     }
 
     private async Task<MediaSummary[]> GetSummaryForGuid(Guid userId, int? limit)
@@ -259,21 +268,27 @@ public class UserController : ControllerBase
 
             foreach (var unknownSummary in userSummariesGrouping[otherUser.Id]
                          .Where(ps => !knownMedia.Contains(ps.MediumId)))
-                recommendations.Add(new IndependentRecommendation
+
+                // only return non hidden
+                if (!hiddenMediaSet.Contains(unknownSummary.MediumId))
                 {
-                    orderValue = listenedTogetherSeconds * unknownSummary.TotalSeconds,
-                    listenedSecondsMatch = unknownSummary.TotalSeconds,
-                    albumImages = unknownSummary.Medium.GetMediumImages(),
-                    albumName = unknownSummary.Medium.AlbumName,
-                    explicitFlag = unknownSummary.Medium.ExplicitContent,
-                    profileUrl = otherUser.SpotifyProfileUrl,
-                    songTitle = unknownSummary.Medium.Title,
-                    username = otherUser.Name,
-                    linkToMedia =  $"spotify:track:{unknownSummary.Medium.LinkToMedium.Split("/").Last()}",
-                    allArtists = unknownSummary.Medium.Artists.Select(a => a.Name).ToArray(),
-                    hidden = hiddenMediaSet.Contains(unknownSummary.MediumId),
-                    mediumId = unknownSummary.MediumId.ToString()
-                });
+                    recommendations.Add(new IndependentRecommendation
+                    {
+                        orderValue = listenedTogetherSeconds * unknownSummary.TotalSeconds,
+                        listenedSecondsMatch = unknownSummary.TotalSeconds,
+                        albumImages = unknownSummary.Medium.GetMediumImages(),
+                        albumName = unknownSummary.Medium.AlbumName,
+                        explicitFlag = unknownSummary.Medium.ExplicitContent,
+                        profileUrl = otherUser.SpotifyProfileUrl,
+                        songTitle = unknownSummary.Medium.Title,
+                        username = otherUser.Name,
+                        linkToMedia =  $"spotify:track:{unknownSummary.Medium.LinkToMedium.Split("/").Last()}",
+                        allArtists = unknownSummary.Medium.Artists.Select(a => a.Name).ToArray(),
+                        hidden = hiddenMediaSet.Contains(unknownSummary.MediumId),
+                        mediumId = unknownSummary.MediumId.ToString()
+                    });
+                }
+               
         }
 
         if (limit.HasValue)
@@ -343,7 +358,7 @@ public class UserController : ControllerBase
             }
 
             return m.Medium.ToTogetherConsumedTrack(listenedSecondsMatch, listenedSecondsYou, hiddenMediaSet.Contains(m.MediumId));
-        });
+        }).Where(s => !s.hidden); // don't return hidden
 
         if (limit.HasValue)
             // all mutual playback results, 
