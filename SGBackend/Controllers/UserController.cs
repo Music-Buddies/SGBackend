@@ -30,11 +30,18 @@ public class UserController : ControllerBase
         var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
         var dbUser = await _dbContext.User.Include(u => u.HiddenMedia).FirstAsync(u => u.Id == userId);
         
-        dbUser.HiddenMedia.Add(new HiddenMedia
+        if (Enum.TryParse(hideMedia.origin, true, out HiddenOrigin origin))
         {
-            HiddenMediumId = Guid.Parse(hideMedia.mediumId),
-            HiddenOrigin = hideMedia.origin
-        });
+            dbUser.HiddenMedia.Add(new HiddenMedia
+            {
+                HiddenMediumId = Guid.Parse(hideMedia.mediumId),
+                HiddenOrigin = origin
+            });
+        }
+        else
+        {
+            return BadRequest("could not parse origin");
+        }
 
         await _dbContext.SaveChangesAsync();
         return Ok();
