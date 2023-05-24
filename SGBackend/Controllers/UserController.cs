@@ -34,7 +34,7 @@ public class UserController : ControllerBase
         {
             dbUser.HiddenMedia.Add(new HiddenMedia
             {
-                HiddenMediumId = Guid.Parse(hideMedia.mediumId),
+                MediumId = Guid.Parse(hideMedia.mediumId),
                 HiddenOrigin = origin
             });
         }
@@ -57,7 +57,7 @@ public class UserController : ControllerBase
         if (Enum.TryParse(hideMedia.origin, true, out HiddenOrigin origin))
         {
             HiddenMedia? hideMediaDb = dbUser.HiddenMedia.FirstOrDefault(m =>
-                m.HiddenMediumId == Guid.Parse(hideMedia.mediumId) && m.HiddenOrigin == origin);
+                m.MediumId == Guid.Parse(hideMedia.mediumId) && m.HiddenOrigin == origin);
 
             if (hideMediaDb != null)
             {
@@ -190,34 +190,41 @@ public class UserController : ControllerBase
 
     [Authorize]
     [HttpGet("spotify/personal-summary/{guid}")]
-    public async Task<MediaSummary[]> GetPersonalSummaryOfOtherUser(string guid, int? limit)
+    public async Task<ProfileMediaModel[]> GetPersonalSummaryOfOtherUser(string guid, int? limit)
     {
-        return (await GetSummaryForGuid(Guid.Parse(guid), limit)).Where(s => !s.hidden).ToArray();
+        return (await GetSummaryForGuid(Guid.Parse(guid), limit)).ToArray();
     }
 
     [Authorize]
     [HttpGet("spotify/personal-summary")]
-    public async Task<MediaSummary[]> GetPersonalSummary(int? limit)
+    public async Task<ProfileMediaModel[]> GetPersonalSummary(int? limit)
     {
         var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
 
-        return (await GetSummaryForGuid(userId, limit)).Where(s => !s.hidden).ToArray();
+        return (await GetSummaryForGuid(userId, limit)).ToArray();
     }
     
     [Authorize]
     [HttpGet("spotify/personal-summary/hidden")]
-    public async Task<MediaSummary[]> GetPersonalSummaryHidden(int? limit)
+    public async Task<HiddenMediaModel[]> GetPersonalSummaryHidden(int? limit)
     {
         var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
-
-        return (await GetSummaryForGuid(userId, limit)).Where(s => s.hidden).ToArray();
+        
+        var hiddenMedia = await _dbContext.HiddenMedia.Include(hm => hm.Medium).Where(hm => hm.UserId == userId).ToArrayAsync();
+        
+        return hiddenMedia.Select(hm =>
+        {
+            var mediaModel = new HiddenMediaModel
+            {
+                hiddenOrigin = hm.HiddenOrigin.ToString()
+            };
+            hm.Medium.SetMediaModel(mediaModel);
+            return mediaModel;
+        }).ToArray();
     }
-
-    private async Task<MediaSummary[]> GetSummaryForGuid(Guid userId, int? limit)
+    
+    private async Task<ProfileMediaModel[]> GetSummaryForGuid(Guid userId, int? limit)
     {
-        var hiddenMedia = await _dbContext.HiddenMedia.Where(hm => hm.UserId == userId).ToArrayAsync();
-        var hiddenMediaMap = hiddenMedia.ToDictionary(hm => hm.HiddenMediumId, hm => hm.HiddenOrigin);
-
         var summariesQuery = _dbContext.PlaybackSummaries
             .Include(s => s.Medium).ThenInclude(m => m.Artists)
             .Include(ps => ps.Medium).ThenInclude(m => m.Images)
@@ -232,8 +239,7 @@ public class UserController : ControllerBase
 
         return summaries.Select(ps =>
             {
-                var hidden = hiddenMediaMap.TryGetValue(ps.MediumId, out var ho);
-                return ps.Medium.ToRecommendedMedia(ps.TotalSeconds, hidden ? ho : null);
+                return ps.Medium.ToProfileMediaModel(ps.TotalSeconds);
             })
             .OrderByDescending(ms => ms.listenedSeconds)
             .ToArray();
@@ -266,7 +272,7 @@ public class UserController : ControllerBase
 
     [Authorize]
     [HttpGet("matches/recommended-media")]
-    public async Task<IndependentRecommendation[]> GetIndependentRecommendedMedia(int? limit)
+    public async Task<DiscoverMediaModel[]> GetIndependentRecommendedMedia(int? limit)
     {
         var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
 
@@ -274,7 +280,7 @@ public class UserController : ControllerBase
             .FirstAsync(u => u.Id == userId);
 
         var hiddenMediaSet = loggedInUser.HiddenMedia.Where(hm => hm.HiddenOrigin == HiddenOrigin.Discover)
-            .Select(hm => hm.HiddenMediumId).ToHashSet();
+            .Select(hm => hm.MediumId).ToHashSet();
         
         var knownMedia = loggedInUser.PlaybackSummaries.Select(ps => ps.MediumId).ToHashSet();
 
@@ -295,8 +301,9 @@ public class UserController : ControllerBase
         var userSummariesGrouping = userSummaries.GroupBy(us => us.UserId)
             .ToDictionary(g => g.Key, g => g.ToArray());
 
-        var recommendations = new List<IndependentRecommendation>();
+        var recommendations = new List<DiscoverMediaModel>();
 
+        
         foreach (var overview in overviews)
         {
             var otherUser = overview.GetOtherUser(loggedInUser);
@@ -305,21 +312,18 @@ public class UserController : ControllerBase
 
             foreach (var unknownSummary in userSummariesGrouping[otherUser.Id]
                          .Where(ps => !knownMedia.Contains(ps.MediumId)))
-                recommendations.Add(new IndependentRecommendation
+            {
+                var dmm = new DiscoverMediaModel
                 {
-                    orderValue = listenedTogetherSeconds * unknownSummary.TotalSeconds,
-                    listenedSecondsMatch = unknownSummary.TotalSeconds,
-                    albumImages = unknownSummary.Medium.GetMediumImages(),
-                    albumName = unknownSummary.Medium.AlbumName,
-                    explicitFlag = unknownSummary.Medium.ExplicitContent,
-                    profileUrl = otherUser.SpotifyProfileUrl,
-                    songTitle = unknownSummary.Medium.Title,
                     username = otherUser.Name,
-                    linkToMedia =  $"spotify:track:{unknownSummary.Medium.LinkToMedium.Split("/").Last()}",
-                    allArtists = unknownSummary.Medium.Artists.Select(a => a.Name).ToArray(),
+                    profileUrl = otherUser.SpotifyProfileUrl,
+                    orderValue = listenedTogetherSeconds * unknownSummary.TotalSeconds,
+                    listenedSeconds = unknownSummary.TotalSeconds,
                     hidden = hiddenMediaSet.Contains(unknownSummary.MediumId),
-                    mediumId = unknownSummary.MediumId.ToString()
-                });
+                };
+                unknownSummary.Medium.SetMediaModel(dmm);
+                recommendations.Add(dmm);
+            }
         }
 
         if (limit.HasValue)
@@ -337,7 +341,7 @@ public class UserController : ControllerBase
 
     [Authorize]
     [HttpGet("matches/{guid}/together-consumed/tracks")]
-    public async Task<MediaSummary[]> GetListenedTogetherTracks(string guid, int? limit)
+    public async Task<TogetherMediaModel[]> GetListenedTogetherTracks(string guid, int? limit)
     {
         var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
         var guidRequested = Guid.Parse(guid);
@@ -352,11 +356,11 @@ public class UserController : ControllerBase
         var hiddenMediaSet = new HashSet<Guid>();
         foreach (var media in loggedInUser.HiddenMedia.Where(hm => hm.HiddenOrigin == HiddenOrigin.PersonalHistory))
         {
-            hiddenMediaSet.Add(media.HiddenMediumId);
+            hiddenMediaSet.Add(media.MediumId);
         }
         foreach (var media in requestedUser.HiddenMedia.Where(hm => hm.HiddenOrigin == HiddenOrigin.PersonalHistory))
         {
-            hiddenMediaSet.Add(media.HiddenMediumId);
+            hiddenMediaSet.Add(media.MediumId);
         }
 
         var match = await _dbContext.MutualPlaybackOverviews
@@ -393,16 +397,16 @@ public class UserController : ControllerBase
 
         if (limit.HasValue)
             // all mutual playback results, 
-            return tracks.OrderByDescending(ms => Math.Min(ms.listenedSecondsYou.Value, ms.listenedSecondsMatch.Value))
+            return tracks.OrderByDescending(ms => Math.Min(ms.listenedSecondsYou, ms.listenedSecondsMatch))
                 .Take(limit.Value).ToArray();
 
-        return tracks.OrderByDescending(ms => Math.Min(ms.listenedSecondsYou.Value, ms.listenedSecondsMatch.Value))
+        return tracks.OrderByDescending(ms => Math.Min(ms.listenedSecondsYou, ms.listenedSecondsMatch))
             .ToArray();
     }
 
     [Authorize]
     [HttpGet("matches/{guid}/recommended-media")]
-    public async Task<MediaSummary[]> GetRecommendedMedia(string guid, int? limit)
+    public async Task<ProfileMediaModel[]> GetRecommendedMedia(string guid, int? limit)
     {
         var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
         var guidRequested = Guid.Parse(guid);
@@ -420,14 +424,10 @@ public class UserController : ControllerBase
             .Include(u => u.HiddenMedia)
             .FirstAsync(u => u.Id == guidRequested);
         
-        // add hide flag from personal hidden media
-        var hiddenMediaMap = requestedUser.HiddenMedia.Where(hm => hm.HiddenOrigin == HiddenOrigin.PersonalHistory).ToDictionary(hm => hm.HiddenMediumId, hm => hm.HiddenOrigin);
-        
         var summaries = requestedUser.PlaybackSummaries.Where(ps => !knownMedia.Contains(ps.Medium))
             .Select(ps =>
             {
-                var hidden = hiddenMediaMap.TryGetValue(ps.MediumId, out var ho);
-                return ps.Medium.ToRecommendedMedia(ps.TotalSeconds, hidden ? ho : null);
+                return ps.Medium.ToProfileMediaModel(ps.TotalSeconds);
             });
 
         if (limit.HasValue)

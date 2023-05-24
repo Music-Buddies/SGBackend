@@ -3,10 +3,12 @@
 namespace SGBackend.Entities;
 
 // only allow one entry per origin, per medium
-[Index(nameof(UserId), nameof(HiddenMediumId), nameof(HiddenOrigin), IsUnique = true)]
+[Index(nameof(UserId), nameof(MediumId), nameof(HiddenOrigin), IsUnique = true)]
 public class HiddenMedia : BaseUserEntity
 {
-    public Guid HiddenMediumId { get; set; }
+    public Guid MediumId { get; set; }
+    
+    public Medium Medium { get; set; }
     
     public HiddenOrigin HiddenOrigin { get; set; }
 }

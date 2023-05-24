@@ -27,48 +27,46 @@ public class Medium : BaseEntity
 
     public string ReleaseDate { get; set; }
 
-    public MediaSummary ToTogetherConsumedTrack(long listenedSecondsMatch, long listenedSecondsYou, bool hidden)
-    {
-        return new MediaSummary
-        {
-            albumImages = SortBySize(Images),
-            allArtists = Artists.Select(a => a.Name).ToArray(),
-            explicitFlag = ExplicitContent,
-            songTitle = Title,
-            // https://open.spotify.com/track/4EWCNWgDS8707fNSZ1oaA5
-            linkToMedia = $"spotify:track:{LinkToMedium.Split("/").Last()}",
-            albumName = AlbumName,
-            releaseDate = ReleaseDate,
-            listenedSecondsYou = listenedSecondsYou,
-            listenedSecondsMatch = listenedSecondsMatch,
-            hidden = hidden,
-            mediumId = Id.ToString()
-        };
-    }
 
+    public TogetherMediaModel ToTogetherConsumedTrack(long listenedSecondsMatch, long listenedSecondsYou, bool hidden)
+    {
+        var tct = new TogetherMediaModel
+        {
+            listenedSecondsMatch = listenedSecondsMatch,
+            listenedSecondsYou = listenedSecondsYou,
+            hidden = hidden
+        };
+        SetMediaModel(tct);
+        return tct;
+    }
+    
     public MediumImage[] GetMediumImages()
     {
         return SortBySize(Images);
     }
 
-    public MediaSummary ToRecommendedMedia(long listenedSeconds, HiddenOrigin? hiddenOrigin)
+    public void SetMediaModel(MediaModel mediaModel)
     {
-        return new MediaSummary
-        {
-            albumImages = SortBySize(Images),
-            allArtists = Artists.Select(a => a.Name).ToArray(),
-            explicitFlag = ExplicitContent,
-            songTitle = Title,
-            // https://open.spotify.com/track/4EWCNWgDS8707fNSZ1oaA5
-            linkToMedia = $"spotify:track:{LinkToMedium.Split("/").Last()}",
-            albumName = AlbumName,
-            releaseDate = ReleaseDate,
-            listenedSeconds = listenedSeconds,
-            hidden = hiddenOrigin.HasValue,
-            mediumId = Id.ToString(),
-            hiddenOrigin = hiddenOrigin.HasValue ? hiddenOrigin.Value.ToString() : null
-        };
+        mediaModel.albumImages = SortBySize(Images);
+        mediaModel.allArtists = Artists.Select(a => a.Name).ToArray();
+        mediaModel.explicitFlag = ExplicitContent;
+        mediaModel.songTitle = Title;
+        mediaModel.linkToMedia = $"spotify:track:{LinkToMedium.Split("/").Last()}";
+        mediaModel.albumName = AlbumName;
+        mediaModel.releaseDate = ReleaseDate;
+        mediaModel.mediumId = Id.ToString();
     }
+    
+    public ProfileMediaModel ToProfileMediaModel(long listenedSeconds)
+    {
+        var profileModel = new ProfileMediaModel
+        {
+            listenedSeconds = listenedSeconds
+        };
+        SetMediaModel(profileModel);
+        return profileModel;
+    }
+    
 
     private static MediumImage[] SortBySize(List<MediumImage> mediumImages)
     {

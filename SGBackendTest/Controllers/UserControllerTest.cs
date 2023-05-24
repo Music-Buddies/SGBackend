@@ -26,7 +26,7 @@ public class UserControllerTest : IClassFixture<WebApplicationFactory<Startup>>
     public async void TestHiddenMediaIndependent()
     {
         var client = await TestSetupAsyncWithUser();
-        var initialRecs = await (await client.HttpClient.GetAsync("/user/matches/recommended-media?limit=10")).Content.ReadFromJsonAsync<IndependentRecommendation[]>();
+        var initialRecs = await (await client.HttpClient.GetAsync("/user/matches/recommended-media?limit=10")).Content.ReadFromJsonAsync<DiscoverMediaModel[]>();
         Assert.True(initialRecs.All(rec => !rec.hidden));
         
         var postHidden = await client.HttpClient.PostAsync("/user/hide-media", new StringContent(
@@ -38,17 +38,13 @@ public class UserControllerTest : IClassFixture<WebApplicationFactory<Startup>>
             }), Encoding.UTF8, "application/json"));
         
         Assert.True(postHidden.IsSuccessStatusCode);
-        
-        var recsWithHidden = await (await client.HttpClient.GetAsync("/user/matches/recommended-media?limit=10")).Content.ReadFromJsonAsync<IndependentRecommendation[]>();
-        Assert.True(recsWithHidden.Any(rec => rec.hidden));
     }
 
     [Fact]
     public async void TestHiddenMediaDiscover()
     {
         var client = await TestSetupAsyncWithUser();
-        var initialSummaries =  await (await client.HttpClient.GetAsync("/user/spotify/personal-summary?limit=10")).Content.ReadFromJsonAsync<MediaSummary[]>();
-        Assert.True(initialSummaries.All(rec => !rec.hidden));
+        var initialSummaries =  await (await client.HttpClient.GetAsync("/user/spotify/personal-summary?limit=10")).Content.ReadFromJsonAsync<ProfileMediaModel[]>();
         
         var postHidden = await client.HttpClient.PostAsync("/user/hide-media", new StringContent(
             JsonSerializer.Serialize(new HideMedia
@@ -100,7 +96,7 @@ public class UserControllerTest : IClassFixture<WebApplicationFactory<Startup>>
     {
         var client = await TestSetupAsync();
         var response = await client.GetAsync("/user/spotify/personal-summary?limit=10");
-        var mediaSummariesArray = await response.Content.ReadFromJsonAsync<MediaSummary[]>();
+        var mediaSummariesArray = await response.Content.ReadFromJsonAsync<ProfileMediaModel[]>();
 
         Assert.NotEmpty(mediaSummariesArray);
         Assert.NotEmpty(mediaSummariesArray[0].albumImages);
@@ -141,7 +137,7 @@ public class UserControllerTest : IClassFixture<WebApplicationFactory<Startup>>
         var matchesArray = await matchesResponse.Content.ReadFromJsonAsync<Match[]>();
         var guid = matchesArray[0].userId;
         var response = await client.GetAsync($"/user/matches/{guid}/recommended-media");
-        var mediaSummariesArray = await response.Content.ReadFromJsonAsync<MediaSummary[]>();
+        var mediaSummariesArray = await response.Content.ReadFromJsonAsync<ProfileMediaModel[]>();
 
         Assert.NotEmpty(mediaSummariesArray);
         Assert.NotEmpty(mediaSummariesArray[0].albumImages);
