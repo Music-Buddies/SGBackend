@@ -210,7 +210,10 @@ public class UserController : ControllerBase
     {
         var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
         
-        var hiddenMedia = await _dbContext.HiddenMedia.Include(hm => hm.Medium).Where(hm => hm.UserId == userId).ToArrayAsync();
+        var hiddenMedia = await _dbContext.HiddenMedia
+            .Include(hm => hm.Medium).ThenInclude(m => m.Images)
+            .Include(hm => hm.Medium).ThenInclude(m => m.Artists)
+            .Where(hm => hm.UserId == userId).ToArrayAsync();
         
         return hiddenMedia.Select(hm =>
         {
