@@ -339,7 +339,7 @@ public class UserController : ControllerBase
                 .Count(rec => rec.hidden);
             
             // always return limit + amount of hidden tracks
-            return recommendations.OrderByDescending(r => r.orderValue).Take(limit.Value + numberHiddenInRange).ToArray();
+            return recommendations.Where(r => !r.hidden).OrderByDescending(r => r.orderValue).Take(limit.Value + numberHiddenInRange).ToArray();
         }
 
         return recommendations.Where(r => !r.hidden).OrderByDescending(r => r.orderValue).ToArray();
