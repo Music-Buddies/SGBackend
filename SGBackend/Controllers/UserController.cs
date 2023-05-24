@@ -215,9 +215,9 @@ public class UserController : ControllerBase
 
     private async Task<MediaSummary[]> GetSummaryForGuid(Guid userId, int? limit)
     {
-        var hiddenMedia = await _dbContext.HiddenMedia.Where(hm => hm.UserId == userId && hm.HiddenOrigin == HiddenOrigin.PersonalHistory).ToArrayAsync();
-        var hiddenMediaHashSet = hiddenMedia.Select(hm => hm.HiddenMediumId).ToHashSet();
-        
+        var hiddenMedia = await _dbContext.HiddenMedia.Where(hm => hm.UserId == userId).ToArrayAsync();
+        var hiddenMediaMap = hiddenMedia.ToDictionary(hm => hm.HiddenMediumId, hm => hm.HiddenOrigin);
+
         var summariesQuery = _dbContext.PlaybackSummaries
             .Include(s => s.Medium).ThenInclude(m => m.Artists)
             .Include(ps => ps.Medium).ThenInclude(m => m.Images)
@@ -230,7 +230,11 @@ public class UserController : ControllerBase
         else
             summaries = await summariesQuery.ToArrayAsync();
 
-        return summaries.Select(ps => ps.Medium.ToRecommendedMedia(ps.TotalSeconds, hiddenMediaHashSet.Contains(ps.MediumId)))
+        return summaries.Select(ps =>
+            {
+                hiddenMediaMap.TryGetValue(ps.MediumId, out var ho);
+                return ps.Medium.ToRecommendedMedia(ps.TotalSeconds, ho);
+            })
             .OrderByDescending(ms => ms.listenedSeconds)
             .ToArray();
     }
@@ -417,10 +421,14 @@ public class UserController : ControllerBase
             .FirstAsync(u => u.Id == guidRequested);
         
         // add hide flag from personal hidden media
-        var hiddenMediaHashSet = requestedUser.HiddenMedia.Where(hm => hm.HiddenOrigin == HiddenOrigin.PersonalHistory).Select(hm => hm.HiddenMediumId).ToHashSet();
+        var hiddenMediaMap = requestedUser.HiddenMedia.Where(hm => hm.HiddenOrigin == HiddenOrigin.PersonalHistory).ToDictionary(hm => hm.HiddenMediumId, hm => hm.HiddenOrigin);
         
         var summaries = requestedUser.PlaybackSummaries.Where(ps => !knownMedia.Contains(ps.Medium))
-            .Select(ps => ps.Medium.ToRecommendedMedia(ps.TotalSeconds, hiddenMediaHashSet.Contains(ps.MediumId)));
+            .Select(ps =>
+            {
+                hiddenMediaMap.TryGetValue(ps.MediumId, out var ho);
+                return ps.Medium.ToRecommendedMedia(ps.TotalSeconds, ho);
+            });
 
         if (limit.HasValue)
             return summaries.OrderByDescending(ms => ms.listenedSeconds)

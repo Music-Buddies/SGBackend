@@ -51,7 +51,7 @@ public class Medium : BaseEntity
         return SortBySize(Images);
     }
 
-    public MediaSummary ToRecommendedMedia(long listenedSeconds, bool hidden)
+    public MediaSummary ToRecommendedMedia(long listenedSeconds, HiddenOrigin? hiddenOrigin)
     {
         return new MediaSummary
         {
@@ -64,8 +64,9 @@ public class Medium : BaseEntity
             albumName = AlbumName,
             releaseDate = ReleaseDate,
             listenedSeconds = listenedSeconds,
-            hidden = hidden,
-            mediumId = Id.ToString()
+            hidden = hiddenOrigin.HasValue,
+            mediumId = Id.ToString(),
+            hiddenOrigin = hiddenOrigin.HasValue ? hiddenOrigin.Value.ToString() : null
         };
     }
 

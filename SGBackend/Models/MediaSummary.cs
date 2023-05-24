@@ -27,4 +27,6 @@ public class MediaSummary
     public string albumName { get; set; }
 
     public string releaseDate { get; set; }
+    
+    public string? hiddenOrigin { get; set; }
 }
