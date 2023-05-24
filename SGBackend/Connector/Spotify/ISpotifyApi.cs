@@ -14,5 +14,5 @@ public interface ISpotifyApi
     public Task<SpotifyProfileResponse> GetProfile([Header("Authorization")] string bearerToken);
 
     [Get("/v1/audio-features/{id}")]
-    public Task<FeatureResponse> GetFeatures([Header("Authorization")] string bearerToken, string id);
+    public Task<ApiResponse<FeatureResponse>> GetFeatures([Header("Authorization")] string bearerToken, string id);
 }

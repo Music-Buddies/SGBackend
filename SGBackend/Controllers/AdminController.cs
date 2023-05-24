@@ -95,7 +95,10 @@ public class AdminController : ControllerBase
             var bearer = "Bearer " + spotifyToken.access_token;
             var id = medium.LinkToMedium.Split("/").Last();
             var features = await _spotifyApi.GetFeatures(bearer, id);
-            medium.BeatsPerMinute = features.tempo;
+            if (features.IsSuccessStatusCode)
+            {
+                medium.BeatsPerMinute = features.Content.tempo;
+            }
         }
 
         await _dbContext.SaveChangesAsync();

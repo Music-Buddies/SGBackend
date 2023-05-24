@@ -54,7 +54,10 @@ public class ParalellAlgoService
                 foreach (var medium in mediaToInsert)
                 {
                     var features = await spotifyApi.GetFeatures("Bearer " + token.Token, medium.LinkToMedium.Split("/").Last());
-                    medium.BeatsPerMinute = features.tempo;
+                    if (features.IsSuccessStatusCode)
+                    {
+                        medium.BeatsPerMinute = features.Content.tempo;
+                    }
                 }
             }
             
