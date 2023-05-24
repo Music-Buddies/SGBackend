@@ -95,7 +95,7 @@ public class UserControllerTest : IClassFixture<WebApplicationFactory<Startup>>
     public async void GetPersonalSummary()
     {
         var client = await TestSetupAsync();
-        var response = await client.GetAsync("/user/spotify/personal-summary?limit=10");
+        var response = await client.GetAsync("/user/spotify/profile-media?limit=10&limit-date=01-02-2023");
         var mediaSummariesArray = await response.Content.ReadFromJsonAsync<ProfileMediaModel[]>();
 
         Assert.NotEmpty(mediaSummariesArray);

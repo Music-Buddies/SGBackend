@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -190,17 +191,26 @@ public class UserController : ControllerBase
 
     [Authorize]
     [HttpGet("spotify/profile-media/{guid}")]
-    public async Task<ProfileMediaModel[]> GetProfileMediaForOtherUser(string guid, int? limit)
+    public async Task<ProfileMediaModel[]> GetProfileMediaForOtherUser(string guid, int? limit, [FromQuery(Name = "limit-date")] string? limitDate)
     {
-        return (await FetchProfileMedia(Guid.Parse(guid), limit)).ToArray();
+        if (limitDate != null)
+        {
+            return await FetchProfileMediaUntil(Guid.Parse(guid),
+                DateTime.ParseExact(limitDate, "dd-MM-yyyy", CultureInfo.InvariantCulture), limit);
+        }
+        return await FetchProfileMedia(Guid.Parse(guid), limit);
     }
 
     [Authorize]
     [HttpGet("spotify/profile-media")]
-    public async Task<ProfileMediaModel[]> GetProfileMedia(int? limit)
+    public async Task<ProfileMediaModel[]> GetProfileMedia(int? limit, [FromQuery(Name = "limit-date")] string? limitDate)
     {
         var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
-
+        if (limitDate != null)
+        {
+            return await FetchProfileMediaUntil(userId,
+                DateTime.ParseExact(limitDate, "dd-MM-yyyy", CultureInfo.InvariantCulture), limit);
+        }
         return (await FetchProfileMedia(userId, limit)).ToArray();
     }
     
@@ -225,7 +235,40 @@ public class UserController : ControllerBase
             return mediaModel;
         }).ToArray();
     }
-    
+
+    private async Task<ProfileMediaModel[]> FetchProfileMediaUntil(Guid userId, DateTime untilTime, int? limit)
+    {
+        var hiddenMedia = await _dbContext.HiddenMedia.Where(hm => hm.UserId == userId).ToArrayAsync();
+        var hiddenMediaHashSet = hiddenMedia.Select(hm => hm.MediumId).ToHashSet();
+
+        var records = await _dbContext.PlaybackRecords.Where(s => s.UserId == userId && s.PlayedAt > untilTime).ToArrayAsync();
+        var uniqueMediaIds = records.Select(r => r.MediumId).ToHashSet();
+
+        var medias = await _dbContext.Media.Include(m => m.Artists).Include(m => m.Images)
+            .Where(m => uniqueMediaIds.Contains(m.Id)).ToArrayAsync();
+        var mediaMap = medias.ToDictionary(m => m.Id, m => m);
+        
+        // sum the records by medium id
+        var pseudoSummaries = records.GroupBy(r => r.MediumId).Select(g => new PlaybackSummary
+        {
+            TotalSeconds = g.Sum(r => r.PlayedSeconds),
+            Medium = mediaMap[g.Key]
+        }).OrderByDescending(ms => ms.TotalSeconds).ToArray();
+        
+        PlaybackSummary[] summaries;
+        if (limit.HasValue)
+            summaries = pseudoSummaries.Take(limit.Value).ToArray();
+        else
+            summaries = pseudoSummaries;
+
+        return summaries.Where(s => !hiddenMediaHashSet.Contains(s.MediumId)).Select(ps =>
+            {
+                return ps.Medium.ToProfileMediaModel(ps.TotalSeconds);
+            })
+            .OrderByDescending(ms => ms.listenedSeconds)
+            .ToArray();
+    }
+
     private async Task<ProfileMediaModel[]> FetchProfileMedia(Guid userId, int? limit)
     {
         var hiddenMedia = await _dbContext.HiddenMedia.Where(hm => hm.UserId == userId).ToArrayAsync();
