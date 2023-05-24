@@ -39,11 +39,6 @@ public class Medium : BaseEntity
         SetMediaModel(tct);
         return tct;
     }
-    
-    public MediumImage[] GetMediumImages()
-    {
-        return SortBySize(Images);
-    }
 
     public void SetMediaModel(MediaModel mediaModel)
     {

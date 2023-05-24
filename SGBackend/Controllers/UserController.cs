@@ -206,7 +206,7 @@ public class UserController : ControllerBase
     
     [Authorize]
     [HttpGet("spotify/personal-summary/hidden")]
-    public async Task<HiddenMediaModel[]> GetPersonalSummaryHidden(int? limit)
+    public async Task<HiddenMediaModel[]> GetPersonalSummaryHidden()
     {
         var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
         
@@ -228,6 +228,9 @@ public class UserController : ControllerBase
     
     private async Task<ProfileMediaModel[]> GetSummaryForGuid(Guid userId, int? limit)
     {
+        var hiddenMedia = await _dbContext.HiddenMedia.Where(hm => hm.UserId == userId).ToArrayAsync();
+        var hiddenMediaHashSet = hiddenMedia.Select(hm => hm.MediumId).ToHashSet();
+        
         var summariesQuery = _dbContext.PlaybackSummaries
             .Include(s => s.Medium).ThenInclude(m => m.Artists)
             .Include(ps => ps.Medium).ThenInclude(m => m.Images)
@@ -240,7 +243,7 @@ public class UserController : ControllerBase
         else
             summaries = await summariesQuery.ToArrayAsync();
 
-        return summaries.Select(ps =>
+        return summaries.Where(s => !hiddenMediaHashSet.Contains(s.MediumId)).Select(ps =>
             {
                 return ps.Medium.ToProfileMediaModel(ps.TotalSeconds);
             })
