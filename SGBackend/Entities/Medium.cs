@@ -82,7 +82,8 @@ public class Medium : BaseEntity
             Title = Title,
             MediumSource = MediumSource,
             ReleaseDate = ReleaseDate,
-            LinkToMedium = LinkToMedium
+            LinkToMedium = LinkToMedium,
+            BeatsPerMinute = BeatsPerMinute
         };
     }
 }
@@ -104,6 +105,8 @@ public class ExportMedium
     public string AlbumName { get; set; }
 
     public string ReleaseDate { get; set; }
+    
+    public double BeatsPerMinute { get; set; }
 
     public Medium ToMedium()
     {
@@ -116,7 +119,8 @@ public class ExportMedium
             AlbumName = AlbumName,
             ExplicitContent = ExplicitContent,
             Artists = Artists.Select(artist => artist.ToArtist()).ToList(),
-            Images = Images.Select(image => image.ToMediumImage()).ToList()
+            Images = Images.Select(image => image.ToMediumImage()).ToList(),
+            BeatsPerMinute = BeatsPerMinute
         };
     }
 }
