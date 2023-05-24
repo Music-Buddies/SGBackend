@@ -33,7 +33,7 @@ public class Medium : BaseEntity
         var tct = new TogetherMediaModel
         {
             listenedSecondsMatch = listenedSecondsMatch,
-            listenedSecondsYou = listenedSecondsYou,
+            listenedSeconds = listenedSecondsYou,
             hidden = hidden
         };
         SetMediaModel(tct);

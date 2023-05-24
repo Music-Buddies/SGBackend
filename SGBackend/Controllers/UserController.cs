@@ -403,10 +403,10 @@ public class UserController : ControllerBase
 
         if (limit.HasValue)
             // all mutual playback results, 
-            return tracks.OrderByDescending(ms => Math.Min(ms.listenedSecondsYou, ms.listenedSecondsMatch))
+            return tracks.OrderByDescending(ms => Math.Min(ms.listenedSeconds, ms.listenedSecondsMatch))
                 .Take(limit.Value).ToArray();
 
-        return tracks.OrderByDescending(ms => Math.Min(ms.listenedSecondsYou, ms.listenedSecondsMatch))
+        return tracks.OrderByDescending(ms => Math.Min(ms.listenedSeconds, ms.listenedSecondsMatch))
             .ToArray();
     }
 
