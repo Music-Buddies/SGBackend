@@ -233,7 +233,7 @@ public class UserController : ControllerBase
         return summaries.Select(ps =>
             {
                 var hidden = hiddenMediaMap.TryGetValue(ps.MediumId, out var ho);
-                return ps.Medium.ToRecommendedMedia(ps.TotalSeconds, hidden ? null : ho);
+                return ps.Medium.ToRecommendedMedia(ps.TotalSeconds, hidden ? ho : null);
             })
             .OrderByDescending(ms => ms.listenedSeconds)
             .ToArray();
@@ -427,7 +427,7 @@ public class UserController : ControllerBase
             .Select(ps =>
             {
                 var hidden = hiddenMediaMap.TryGetValue(ps.MediumId, out var ho);
-                return ps.Medium.ToRecommendedMedia(ps.TotalSeconds, hidden ? null : ho);
+                return ps.Medium.ToRecommendedMedia(ps.TotalSeconds, hidden ? ho : null);
             });
 
         if (limit.HasValue)
