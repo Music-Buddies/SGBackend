@@ -105,8 +105,9 @@ public class Startup
                     var handleResult = await spotifyConnector.HandleUserLoggedIn(context);
                     var dbUser = handleResult.User;
 
+                    // save cached token to store
                     if (context.AccessToken != null && context.ExpiresIn.HasValue)
-                        accessTokenProvider.InsertAccessToken(dbUser, new AccessToken
+                        accessTokenProvider.InsertAccessToken(dbUser.Id, new AccessToken
                         {
                             Fetched = DateTime.Now,
                             Token = context.AccessToken,

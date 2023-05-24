@@ -2,9 +2,11 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
+using SecretsProvider;
 using SGBackend;
 using SGBackend.Connector.Spotify;
 using SGBackend.Entities;
+using SGBackend.Models;
 using SGBackend.Provider;
 
 namespace SGBackendTest.Controllers;
@@ -16,6 +18,16 @@ public class DevTests : IClassFixture<WebApplicationFactory<Startup>>
     public DevTests(WebApplicationFactory<Startup> factory)
     {
         _factory = factory;
+    }
+
+    [Fact]
+    public async void TestFeatureMigration()
+    {
+        using var scope = _factory.Services.CreateScope();
+        var secrets = scope.ServiceProvider.GetRequiredService<ISecretsProvider>().GetSecret<Secrets>();
+
+        var client = _factory.CreateClient();
+        await client.GetAsync($"admin/audio-feature-migration/{secrets.AdminToken}");
     }
 
     [Fact]
@@ -37,7 +49,6 @@ public class DevTests : IClassFixture<WebApplicationFactory<Startup>>
     }
 
     [Fact]
-
     public async void FetchJoey()
     {
         using var scope = _factory.Services.CreateScope();
@@ -115,4 +126,5 @@ public class DevTests : IClassFixture<WebApplicationFactory<Startup>>
         client.DefaultRequestHeaders.Add("Authorization", "Bearer " + token);
         var response = await client.GetAsync("/user/matches");
     }
+    
 }

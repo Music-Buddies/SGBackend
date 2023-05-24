@@ -26,6 +26,8 @@ public class Medium : BaseEntity
     public string AlbumName { get; set; }
 
     public string ReleaseDate { get; set; }
+    
+    public double BeatsPerMinute { get; set; }
 
 
     public TogetherMediaModel ToTogetherMedia(long listenedSecondsMatch, long listenedSecondsYou, bool hidden)
@@ -50,6 +52,7 @@ public class Medium : BaseEntity
         mediaModel.albumName = AlbumName;
         mediaModel.releaseDate = ReleaseDate;
         mediaModel.mediumId = Id.ToString();
+        mediaModel.bpm = BeatsPerMinute;
     }
     
     public ProfileMediaModel ToProfileMediaModel(long listenedSeconds)

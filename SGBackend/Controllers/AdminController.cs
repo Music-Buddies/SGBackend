@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using Quartz;
 using SecretsProvider;
+using SGBackend.Connector.Spotify;
 using SGBackend.Entities;
 using SGBackend.Models;
 using SGBackend.Provider;
@@ -27,9 +28,15 @@ public class AdminController : ControllerBase
 
     private readonly UserService _userService;
 
+    private readonly SpotifyConnector _spotifyConnector;
+
+    private readonly ISpotifyApi _spotifyApi;
+
+    private readonly ILogger<AdminController> _logger;
+
     public AdminController(ParalellAlgoService algoService, SgDbContext dbContext, UserService userService,
         ISchedulerFactory schedulerFactory, ISecretsProvider secretsProvider, TransferService transferService,
-        JwtProvider jwtProvider)
+        JwtProvider jwtProvider, SpotifyConnector spotifyConnector, ISpotifyApi spotifyApi, ILogger<AdminController> logger)
     {
         _algoService = algoService;
         _dbContext = dbContext;
@@ -38,6 +45,9 @@ public class AdminController : ControllerBase
         _secretsProvider = secretsProvider;
         _transferService = transferService;
         _jwtProvider = jwtProvider;
+        _spotifyConnector = spotifyConnector;
+        _spotifyApi = spotifyApi;
+        _logger = logger;
     }
 
     private bool AdminTokenValid(string adminToken)
@@ -45,7 +55,7 @@ public class AdminController : ControllerBase
         var secrets = _secretsProvider.GetSecret<Secrets>();
         return secrets.AdminToken == adminToken;
     }
-
+    
     [HttpGet("login-with-token/{loginToken}")]
     public async Task<ActionResult<AdminTokenResponse>> LoginWithToken(string loginToken)
     {
@@ -68,9 +78,35 @@ public class AdminController : ControllerBase
         return Unauthorized();
     }
     
-    [HttpGet("fetch-and-calc-all-users/{adminPassword}")]
-    public async Task<IActionResult> FetchAndCalcUsers()
+    [HttpGet("audio-feature-migration/{adminPassword}")]
+    public async Task<IActionResult> AudioFeatureMigration(string adminPassword)
     {
+        if (!AdminTokenValid(adminPassword)) return Unauthorized();
+
+        var userWithRefreshToken = await _dbContext.User.FirstAsync(u => u.SpotifyRefreshToken != null);
+        var spotifyToken =
+            await _spotifyConnector.GetAccessTokenUsingRefreshToken(userWithRefreshToken.SpotifyRefreshToken);
+
+        var media = await _dbContext.Media.ToArrayAsync();
+        
+        foreach (var medium in media)
+        {
+            _logger.LogInformation("Fetching bpm for medium {mediumUrl}", medium.LinkToMedium);
+            var bearer = "Bearer " + spotifyToken.access_token;
+            var id = medium.LinkToMedium.Split("/").Last();
+            var features = await _spotifyApi.GetFeatures(bearer, id);
+            medium.BeatsPerMinute = features.tempo;
+        }
+
+        await _dbContext.SaveChangesAsync();
+        
+        return Ok();
+    }
+    
+    [HttpGet("fetch-and-calc-all-users/{adminPassword}")]
+    public async Task<IActionResult> FetchAndCalcUsers(string adminPassword)
+    {
+        if (!AdminTokenValid(adminPassword)) return Unauthorized();
         await _algoService.FetchAndCalcUsers();
         return Ok();
     }

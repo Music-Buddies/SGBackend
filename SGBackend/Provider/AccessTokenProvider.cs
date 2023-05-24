@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using SGBackend.Connector.Spotify;
 using SGBackend.Entities;
 
@@ -13,9 +14,20 @@ public class AccessTokenProvider
         _scopeFactory = scopeFactory;
     }
 
-    public void InsertAccessToken(User user, AccessToken accessToken)
+    public bool TryGetAccessToken(Guid userId, [MaybeNullWhen(false)] out AccessToken accessToken)
     {
-        _tokenCache[user.Id] = accessToken;
+        var cachedTokenExists = _tokenCache.TryGetValue(userId, out accessToken);
+        if (cachedTokenExists && DateTime.Now < accessToken.Fetched.Add(accessToken.ExpiresIn))
+        {
+            // token exists and is valid
+            return true;
+        }
+        return false;
+    }
+    
+    public void InsertAccessToken(Guid userId, AccessToken accessToken)
+    {
+        _tokenCache[userId] = accessToken;
     }
 
     public async Task<string?> GetAccessToken(User user)

@@ -12,4 +12,7 @@ public interface ISpotifyApi
 
     [Get("/v1/me")]
     public Task<SpotifyProfileResponse> GetProfile([Header("Authorization")] string bearerToken);
+
+    [Get("/v1/audio-features/{id}")]
+    public Task<FeatureResponse> GetFeatures([Header("Authorization")] string bearerToken, string id);
 }

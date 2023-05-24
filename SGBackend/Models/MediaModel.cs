@@ -19,4 +19,6 @@ public class MediaModel
     public string albumName { get; set; }
 
     public string releaseDate { get; set; }
+    
+    public double bpm { get; set; }
 }

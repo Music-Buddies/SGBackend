@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using SGBackend.Entities;
@@ -11,9 +12,10 @@ using SGBackend.Entities;
 namespace SGBackend.Migrations
 {
     [DbContext(typeof(SgDbContext))]
-    partial class SgDbContextModelSnapshot : ModelSnapshot
+    [Migration("20230524011215_BeatsPerMinute")]
+    partial class BeatsPerMinute
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -48,20 +50,18 @@ namespace SGBackend.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<Guid>("HiddenMediumId")
+                        .HasColumnType("uuid");
+
                     b.Property<int>("HiddenOrigin")
                         .HasColumnType("integer");
-
-                    b.Property<Guid>("MediumId")
-                        .HasColumnType("uuid");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("MediumId");
-
-                    b.HasIndex("UserId", "MediumId", "HiddenOrigin")
+                    b.HasIndex("UserId", "HiddenMediumId", "HiddenOrigin")
                         .IsUnique();
 
                     b.ToTable("HiddenMedia");
@@ -319,19 +319,11 @@ namespace SGBackend.Migrations
 
             modelBuilder.Entity("SGBackend.Entities.HiddenMedia", b =>
                 {
-                    b.HasOne("SGBackend.Entities.Medium", "Medium")
-                        .WithMany()
-                        .HasForeignKey("MediumId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("SGBackend.Entities.User", "User")
                         .WithMany("HiddenMedia")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("Medium");
 
                     b.Navigation("User");
                 });

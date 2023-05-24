@@ -1,7 +1,9 @@
 using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
+using SecretsProvider;
 using SGBackend.Connector.Spotify;
 using SGBackend.Entities;
+using SGBackend.Provider;
 
 namespace SGBackend.Service;
 
@@ -25,7 +27,12 @@ public class ParalellAlgoService
         _logger = logger;
     }
 
-    private async Task UpdateMedia(SgDbContext dbContext, SpotifyListenHistory history)
+    /// <summary>
+    ///
+    /// </summary>
+    /// <param name="dbContext">Needs to be same dbcontext as parent otherwise there will be matching problems</param>
+    /// <param name="history"></param>
+    private async Task UpdateMedia(Guid userId, SgDbContext dbContext, SpotifyListenHistory history)
     {
         var dbExistingMedia = await dbContext.Media.ToArrayAsync();
 
@@ -33,9 +40,24 @@ public class ParalellAlgoService
             !dbExistingMedia.Any(existingMedia =>
                 existingMedia.LinkToMedium == m.LinkToMedium
                 && existingMedia.MediumSource == m.MediumSource)).ToArray();
-
+        
         if (mediaToInsert.Any())
         {
+            
+            // try fetch bpm with existing token in cache
+            using var scope = _scopeFactory.CreateScope();
+            var spotifyApi = scope.ServiceProvider.GetRequiredService<ISpotifyApi>();
+            var tokenService = scope.ServiceProvider.GetRequiredService<AccessTokenProvider>();
+        
+            if(tokenService.TryGetAccessToken(userId, out var token))
+            {
+                foreach (var medium in mediaToInsert)
+                {
+                    var features = await spotifyApi.GetFeatures("Bearer " + token.Token, medium.LinkToMedium.Split("/").Last());
+                    medium.BeatsPerMinute = features.tempo;
+                }
+            }
+            
             await dbContext.Media.AddRangeAsync(mediaToInsert);
             await dbContext.SaveChangesAsync();
         }
@@ -264,7 +286,7 @@ public class ParalellAlgoService
             await _mediaGlobalLock.WaitAsync();
             try
             {
-                await UpdateMedia(dbContext, history);
+                await UpdateMedia(userId, dbContext, history);
             }
             finally
             {
