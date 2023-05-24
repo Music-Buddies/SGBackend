@@ -189,24 +189,24 @@ public class UserController : ControllerBase
     }
 
     [Authorize]
-    [HttpGet("spotify/personal-summary/{guid}")]
-    public async Task<ProfileMediaModel[]> GetPersonalSummaryOfOtherUser(string guid, int? limit)
+    [HttpGet("spotify/profile-media/{guid}")]
+    public async Task<ProfileMediaModel[]> GetProfileMediaForOtherUser(string guid, int? limit)
     {
-        return (await GetSummaryForGuid(Guid.Parse(guid), limit)).ToArray();
+        return (await FetchProfileMedia(Guid.Parse(guid), limit)).ToArray();
     }
 
     [Authorize]
-    [HttpGet("spotify/personal-summary")]
-    public async Task<ProfileMediaModel[]> GetPersonalSummary(int? limit)
+    [HttpGet("spotify/profile-media")]
+    public async Task<ProfileMediaModel[]> GetProfileMedia(int? limit)
     {
         var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
 
-        return (await GetSummaryForGuid(userId, limit)).ToArray();
+        return (await FetchProfileMedia(userId, limit)).ToArray();
     }
     
     [Authorize]
-    [HttpGet("spotify/personal-summary/hidden")]
-    public async Task<HiddenMediaModel[]> GetPersonalSummaryHidden()
+    [HttpGet("spotify/hidden-media")]
+    public async Task<HiddenMediaModel[]> GetHiddenMedia()
     {
         var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
         
@@ -226,7 +226,7 @@ public class UserController : ControllerBase
         }).ToArray();
     }
     
-    private async Task<ProfileMediaModel[]> GetSummaryForGuid(Guid userId, int? limit)
+    private async Task<ProfileMediaModel[]> FetchProfileMedia(Guid userId, int? limit)
     {
         var hiddenMedia = await _dbContext.HiddenMedia.Where(hm => hm.UserId == userId).ToArrayAsync();
         var hiddenMediaHashSet = hiddenMedia.Select(hm => hm.MediumId).ToHashSet();
@@ -277,8 +277,8 @@ public class UserController : ControllerBase
     }
 
     [Authorize]
-    [HttpGet("matches/recommended-media")]
-    public async Task<DiscoverMediaModel[]> GetIndependentRecommendedMedia(int? limit)
+    [HttpGet("matches/discover-media")]
+    public async Task<DiscoverMediaModel[]> GetDiscoverMedia(int? limit)
     {
         var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
 
@@ -346,8 +346,8 @@ public class UserController : ControllerBase
     }
 
     [Authorize]
-    [HttpGet("matches/{guid}/together-consumed/tracks")]
-    public async Task<TogetherMediaModel[]> GetListenedTogetherTracks(string guid, int? limit)
+    [HttpGet("matches/{guid}/together-media")]
+    public async Task<TogetherMediaModel[]> GetTogetherMedia(string guid, int? limit)
     {
         var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
         var guidRequested = Guid.Parse(guid);
