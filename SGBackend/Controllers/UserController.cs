@@ -398,7 +398,7 @@ public class UserController : ControllerBase
                 listenedSecondsYou = m.PlaybackSecondsUser2;
             }
 
-            return m.Medium.ToTogetherConsumedTrack(listenedSecondsMatch, listenedSecondsYou, hiddenMediaSet.Contains(m.MediumId));
+            return m.Medium.ToTogetherMedia(listenedSecondsMatch, listenedSecondsYou, hiddenMediaSet.Contains(m.MediumId));
         }).Where(s => !s.hidden); // don't return hidden
 
         if (limit.HasValue)
@@ -429,8 +429,10 @@ public class UserController : ControllerBase
             .ThenInclude(m => m.Images)
             .Include(u => u.HiddenMedia)
             .FirstAsync(u => u.Id == guidRequested);
+
+        var hiddenMediaSet = requestedUser.HiddenMedia.Select(hm => hm.MediumId).ToHashSet();
         
-        var summaries = requestedUser.PlaybackSummaries.Where(ps => !knownMedia.Contains(ps.Medium))
+        var summaries = requestedUser.PlaybackSummaries.Where(ps => !knownMedia.Contains(ps.Medium) && !hiddenMediaSet.Contains(ps.MediumId))
             .Select(ps =>
             {
                 return ps.Medium.ToProfileMediaModel(ps.TotalSeconds);

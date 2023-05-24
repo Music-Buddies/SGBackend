@@ -28,7 +28,7 @@ public class Medium : BaseEntity
     public string ReleaseDate { get; set; }
 
 
-    public TogetherMediaModel ToTogetherConsumedTrack(long listenedSecondsMatch, long listenedSecondsYou, bool hidden)
+    public TogetherMediaModel ToTogetherMedia(long listenedSecondsMatch, long listenedSecondsYou, bool hidden)
     {
         var tct = new TogetherMediaModel
         {
