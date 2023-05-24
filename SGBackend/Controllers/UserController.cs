@@ -342,7 +342,7 @@ public class UserController : ControllerBase
             return recommendations.OrderByDescending(r => r.orderValue).Take(limit.Value + numberHiddenInRange).ToArray();
         }
 
-        return recommendations.OrderByDescending(r => r.orderValue).ToArray();
+        return recommendations.Where(r => !r.hidden).OrderByDescending(r => r.orderValue).ToArray();
     }
 
     [Authorize]
