@@ -232,8 +232,8 @@ public class UserController : ControllerBase
 
         return summaries.Select(ps =>
             {
-                hiddenMediaMap.TryGetValue(ps.MediumId, out var ho);
-                return ps.Medium.ToRecommendedMedia(ps.TotalSeconds, ho);
+                var hidden = hiddenMediaMap.TryGetValue(ps.MediumId, out var ho);
+                return ps.Medium.ToRecommendedMedia(ps.TotalSeconds, hidden ? null : ho);
             })
             .OrderByDescending(ms => ms.listenedSeconds)
             .ToArray();
@@ -426,8 +426,8 @@ public class UserController : ControllerBase
         var summaries = requestedUser.PlaybackSummaries.Where(ps => !knownMedia.Contains(ps.Medium))
             .Select(ps =>
             {
-                hiddenMediaMap.TryGetValue(ps.MediumId, out var ho);
-                return ps.Medium.ToRecommendedMedia(ps.TotalSeconds, ho);
+                var hidden = hiddenMediaMap.TryGetValue(ps.MediumId, out var ho);
+                return ps.Medium.ToRecommendedMedia(ps.TotalSeconds, hidden ? null : ho);
             });
 
         if (limit.HasValue)
