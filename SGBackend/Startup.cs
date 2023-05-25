@@ -23,7 +23,16 @@ public class Startup
     {
         // add and build tempt services for using secrets in configs
         // needs to be first (used in service extensions)
-        builder.AddSecretsProvider();
+        if (builder.Environment.IsDevelopment())
+        {
+            builder.Services.AddDevSecretsProvider();
+        }
+        
+        if(builder.Environment.IsProduction() || builder.Environment.IsDevStage())
+        {
+            builder.Services.AddEnvSecretsProvider();
+        }
+        
         var tempProvider = builder.Services.BuildServiceProvider();
         var secretsProvider = tempProvider.GetRequiredService<ISecretsProvider>();
 
@@ -261,5 +270,13 @@ public class Startup
         app.MapControllers();
 
         app.Run();
+    }
+}
+
+public static class IWebHostEnvironmentExtensions
+{
+    public static bool IsDevStage(this IWebHostEnvironment env)
+    {
+        return env.EnvironmentName == "DevStage";
     }
 }
