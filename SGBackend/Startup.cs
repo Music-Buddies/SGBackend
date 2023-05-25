@@ -190,9 +190,12 @@ public class Startup
             await dbContext.SaveChangesAsync();
         }
 
+        var testLogger = scope.ServiceProvider.GetRequiredService<ILogger<Startup>>();
+        
         // prod inits
         if (app.Environment.IsProduction())
         {
+            testLogger.LogError("IS PROD");
             app.Use(async (context, next) =>
             {
                 context.Request.Host = new HostString("suggest-app.com");
@@ -225,6 +228,7 @@ public class Startup
         // dev inits
         if (app.Environment.IsDevelopment())
         {
+            testLogger.LogError("IS DEV");
             // overwrite host for oauth redirect
             // dev fe is running on different port, vite.config.js proxies
             // the relevant oauth requests to the dev running backend
