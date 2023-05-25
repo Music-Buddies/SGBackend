@@ -148,12 +148,11 @@ public class UserController : ControllerBase
     [Authorize]
     [HttpGet("spotify/profile-media/{guid}")]
     public async Task<ProfileMediaModel[]> GetProfileMediaForOtherUser(string guid, int? limit,
-        [FromQuery(Name = "limit-date")] string? limitDate)
+        [FromQuery(Name = "limit-key")] string? limitKey)
     {
-        if (limitDate != null)
+        if (limitKey != null)
         {
-            return await FetchProfileMediaUntil(Guid.Parse(guid),
-                DateTime.ParseExact(limitDate, "dd-MM-yyyy", CultureInfo.InvariantCulture), limit);
+            return await FetchProfileMediaUntil(Guid.Parse(guid), LimitKeyToDate(limitKey), limit);
         }
 
         return await FetchProfileMedia(Guid.Parse(guid), limit);
@@ -162,13 +161,12 @@ public class UserController : ControllerBase
     [Authorize]
     [HttpGet("spotify/profile-media")]
     public async Task<ProfileMediaModel[]> GetProfileMedia(int? limit,
-        [FromQuery(Name = "limit-date")] string? limitDate)
+        [FromQuery(Name = "limit-key")] string? limitKey)
     {
         var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
-        if (limitDate != null)
+        if (limitKey != null)
         {
-            return await FetchProfileMediaUntil(userId,
-                DateTime.ParseExact(limitDate, "dd-MM-yyyy", CultureInfo.InvariantCulture), limit);
+            return await FetchProfileMediaUntil(userId, LimitKeyToDate(limitKey), limit);
         }
 
         return (await FetchProfileMedia(userId, limit)).ToArray();
@@ -504,5 +502,21 @@ public class UserController : ControllerBase
 
         for (var i = 0; i < matchesArray.Length; i++) matchesArray[i].rank = i + 1;
         return matchesArray;
+    }
+
+    private DateTime LimitKeyToDate(string limitKey)
+    {
+        var now = DateTime.Now;
+        switch (limitKey)
+        {
+            case "1W":
+                return now.AddDays(-7);
+            case "1M":
+                return now.AddMonths(-1);
+            case "1Y":
+                return now.AddYears(-1);
+        }
+
+        throw new Exception("Limit key not parsable");
     }
 }
