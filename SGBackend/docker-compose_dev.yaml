@@ -4,7 +4,7 @@ services:
   dev-sg-backend:
     restart: always
     build: .
-    entrypoint: [ "dotnet", "SGBackend.dll", "--environment=Production" ]
+    entrypoint: [ "dotnet", "SGBackend.dll", "--environment=DevStage" ]
     environment:
       - SG_SECRETS=${SG_SECRETS}
     networks:
