@@ -410,7 +410,8 @@ public class UserController : ControllerBase
         var pseudoSummaries = records.GroupBy(r => r.MediumId).Select(g => new PlaybackSummary
         {
             TotalSeconds = g.Sum(r => r.PlayedSeconds),
-            Medium = mediaMap[g.Key]
+            Medium = mediaMap[g.Key],
+            MediumId = g.Key
         }).OrderByDescending(ms => ms.TotalSeconds).ToArray();
 
         PlaybackSummary[] summaries;
