@@ -1,4 +1,4 @@
-﻿namespace SGBackend.Connector.Spotify;
+﻿namespace SGBackend.Connector.Spotify.Model;
 
 public class FeatureResponse
 {

@@ -14,7 +14,7 @@ public class AccessTokenProvider
         _scopeFactory = scopeFactory;
     }
 
-    public bool TryGetAccessToken(Guid userId, [MaybeNullWhen(false)] out AccessToken accessToken)
+    public bool TryGetTokenFromCache(Guid userId, [MaybeNullWhen(false)] out AccessToken accessToken)
     {
         var cachedTokenExists = _tokenCache.TryGetValue(userId, out accessToken);
         if (cachedTokenExists && DateTime.Now < accessToken.Fetched.Add(accessToken.ExpiresIn))
@@ -25,7 +25,7 @@ public class AccessTokenProvider
         return false;
     }
     
-    public void InsertAccessToken(Guid userId, AccessToken accessToken)
+    public void InsertTokenIntoCache(Guid userId, AccessToken accessToken)
     {
         _tokenCache[userId] = accessToken;
     }
@@ -44,8 +44,6 @@ public class AccessTokenProvider
             var spotifyConnector = scope.ServiceProvider.GetRequiredService<SpotifyConnector>();
             // token is invalid / doesnt exist yet
             var tokenResponse = await spotifyConnector.GetAccessTokenUsingRefreshToken(user.SpotifyRefreshToken);
-
-            // TODO: Set userRefreshTokenExpired in User Entity. filter on fetches
 
             if (tokenResponse == null) return null;
 

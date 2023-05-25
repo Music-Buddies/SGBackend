@@ -25,9 +25,9 @@ public class PlaybackServiceFixture
         services.AddExternalApiClients();
         services.AddDbContext<SgDbContext>();
         services.AddScoped<SpotifyConnector>();
-        services.AddScoped<RandomizedUserService>();
+        services.AddScoped<RandomUserService>();
         services.AddScoped<UserService>();
-        services.AddSingleton<ParalellAlgoService>();
+        services.AddSingleton<MatchingService>();
 
         ServiceProvider = services.BuildServiceProvider();
     }
@@ -47,7 +47,7 @@ public class PlaybackServiceTest : IClassFixture<PlaybackServiceFixture>
     [Fact]
     public async Task TestPerformance()
     {
-        var rndUserService = _serviceProvider.GetService<RandomizedUserService>();
+        var rndUserService = _serviceProvider.GetService<RandomUserService>();
 
         var rndUsers = await rndUserService.GenerateXRandomUsersAndCalc(1);
     }
@@ -55,9 +55,9 @@ public class PlaybackServiceTest : IClassFixture<PlaybackServiceFixture>
     [Fact]
     public async Task TestContinuity()
     {
-        var rndUserService = _serviceProvider.GetService<RandomizedUserService>();
+        var rndUserService = _serviceProvider.GetService<RandomUserService>();
         var userService = _serviceProvider.GetService<UserService>();
-        var algoService = _serviceProvider.GetService<ParalellAlgoService>();
+        var algoService = _serviceProvider.GetService<MatchingService>();
         var db = _serviceProvider.GetService<SgDbContext>();
 
         var user = await userService.AddUser(rndUserService.GetRandomizedDummyUser());
@@ -93,7 +93,7 @@ public class PlaybackServiceTest : IClassFixture<PlaybackServiceFixture>
     public async Task TestParalellism()
     {
         var userService = _serviceProvider.GetService<UserService>();
-        var rndUserService = _serviceProvider.GetService<RandomizedUserService>();
+        var rndUserService = _serviceProvider.GetService<RandomUserService>();
         var db = _serviceProvider.GetService<SgDbContext>();
 
         // create dummy users
@@ -117,7 +117,7 @@ public class PlaybackServiceTest : IClassFixture<PlaybackServiceFixture>
             {
                 using (var scope = _serviceProvider.CreateScope())
                 {
-                    var algo = scope.ServiceProvider.GetService<ParalellAlgoService>();
+                    var algo = scope.ServiceProvider.GetService<MatchingService>();
                     await algo.Process(user.Id, history);
                 }
             };
@@ -132,7 +132,7 @@ public class PlaybackServiceTest : IClassFixture<PlaybackServiceFixture>
     public async Task Test()
     {
         var db = _serviceProvider.GetService<SgDbContext>();
-        var rndUserService = _serviceProvider.GetService<RandomizedUserService>();
+        var rndUserService = _serviceProvider.GetService<RandomUserService>();
         var rndUsers = await rndUserService.GenerateXRandomUsersAndCalc(5);
 
         // find matches between rndUsers 

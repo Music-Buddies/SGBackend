@@ -1,4 +1,5 @@
 using Refit;
+using SGBackend.Connector.Spotify.Model;
 
 namespace SGBackend.Connector.Spotify;
 

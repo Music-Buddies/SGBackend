@@ -17,17 +17,6 @@ using SGBackend.Service;
 
 namespace SGBackend;
 
-// mysql fix
-public class MysqlEntityFrameworkDesignTimeServices : IDesignTimeServices
-{
-    public void ConfigureDesignTimeServices(IServiceCollection serviceCollection)
-    {
-        serviceCollection.AddEntityFrameworkMySQL();
-        new EntityFrameworkRelationalDesignServicesBuilder(serviceCollection)
-            .TryAddCoreServices();
-    }
-}
-
 public class Startup
 {
     public void ConfigureServices(WebApplicationBuilder builder)
@@ -43,13 +32,13 @@ public class Startup
         builder.Services.AddExternalApiClients();
         builder.Services.AddDbContext<SgDbContext>();
         builder.Services.AddScoped<SpotifyConnector>();
-        builder.Services.AddScoped<StateManager>();
+        builder.Services.AddScoped<StateService>();
         builder.Services.AddScoped<TransferService>();
         builder.Services.AddSingleton<JwtProvider>();
-        builder.Services.AddScoped<RandomizedUserService>();
+        builder.Services.AddScoped<RandomUserService>();
         builder.Services.AddScoped<UserService>();
         builder.Services.AddSingleton<AccessTokenProvider>();
-        builder.Services.AddSingleton<ParalellAlgoService>();
+        builder.Services.AddSingleton<MatchingService>();
         builder.Services.AddDatabaseDeveloperPageExceptionFilter();
         builder.Services.AddControllers();
         builder.Services.AddHttpClient();
@@ -107,7 +96,7 @@ public class Startup
 
                     // save cached token to store
                     if (context.AccessToken != null && context.ExpiresIn.HasValue)
-                        accessTokenProvider.InsertAccessToken(dbUser.Id, new AccessToken
+                        accessTokenProvider.InsertTokenIntoCache(dbUser.Id, new AccessToken
                         {
                             Fetched = DateTime.Now,
                             Token = context.AccessToken,
@@ -123,7 +112,7 @@ public class Startup
                     if (!handleResult.ExistedPreviously)
                     {
                         var paralellAlgo =
-                            context.HttpContext.RequestServices.GetRequiredService<ParalellAlgoService>();
+                            context.HttpContext.RequestServices.GetRequiredService<MatchingService>();
 
                         var history = await spotifyConnector.FetchAvailableContentHistory(dbUser);
 
@@ -174,7 +163,7 @@ public class Startup
         await dbContext.Database.MigrateAsync();
 
         // fetch state once
-        var stateManager = services.GetRequiredService<StateManager>();
+        var stateManager = services.GetRequiredService<StateService>();
         var state = await stateManager.GetState();
 
         // generale stage independent inits
@@ -251,7 +240,7 @@ public class Startup
             var generateRandomUsers = config.GetValue<bool?>("GenerateRandomUsers");
             if (generateRandomUsers != null && generateRandomUsers.Value && !state.RandomUsersGenerated)
             {
-                var rndService = services.GetRequiredService<RandomizedUserService>();
+                var rndService = services.GetRequiredService<RandomUserService>();
                 rndService.GenerateXRandomUsersAndCalc(5).Wait();
                 state.RandomUsersGenerated = true;
                 await dbContext.SaveChangesAsync();

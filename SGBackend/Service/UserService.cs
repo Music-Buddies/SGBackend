@@ -4,7 +4,7 @@ using SGBackend.Entities;
 namespace SGBackend.Service;
 
 /// <summary>
-///     needs to be registered as singleton
+/// needs to be registered as singleton
 /// </summary>
 public class UserService
 {
@@ -28,7 +28,7 @@ public class UserService
 
                 dbContext.User.Add(user);
 
-                // also fetch all other users and precreate listenedTogetherSummaries
+                // also fetch all other users and pre-create overviews
                 foreach (var existingUser in allExistingUsers)
                     dbContext.MutualPlaybackOverviews.Add(new MutualPlaybackOverview
                     {

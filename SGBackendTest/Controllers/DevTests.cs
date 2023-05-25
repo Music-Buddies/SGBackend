@@ -44,7 +44,6 @@ public class DevTests : IClassFixture<WebApplicationFactory<Startup>>
             var overviews = await context.MutualPlaybackOverviews.Include(o => o.MutualPlaybackEntries)
                 .Where(o => o.User1Id == user.Id || o.User2Id == user.Id).ToArrayAsync();
             var noMatches = overviews.All(o => !o.MutualPlaybackEntries.Any());
-            
         }
     }
 

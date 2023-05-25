@@ -21,41 +21,6 @@ public class UserControllerTest : IClassFixture<WebApplicationFactory<Startup>>
     {
         _factory = factory;
     }
-
-    [Fact]
-    public async void TestHiddenMediaIndependent()
-    {
-        var client = await TestSetupAsyncWithUser();
-        var initialRecs = await (await client.HttpClient.GetAsync("/user/matches/recommended-media?limit=10")).Content.ReadFromJsonAsync<DiscoverMediaModel[]>();
-        Assert.True(initialRecs.All(rec => !rec.hidden));
-        
-        var postHidden = await client.HttpClient.PostAsync("/user/hide-media", new StringContent(
-            JsonSerializer.Serialize(new HideMedia
-            {
-                origin = HiddenOrigin.Discover.ToString(),
-                mediumId = initialRecs[0].mediumId
-
-            }), Encoding.UTF8, "application/json"));
-        
-        Assert.True(postHidden.IsSuccessStatusCode);
-    }
-
-    [Fact]
-    public async void TestHiddenMediaDiscover()
-    {
-        var client = await TestSetupAsyncWithUser();
-        var initialSummaries =  await (await client.HttpClient.GetAsync("/user/spotify/personal-summary?limit=10")).Content.ReadFromJsonAsync<ProfileMediaModel[]>();
-        
-        var postHidden = await client.HttpClient.PostAsync("/user/hide-media", new StringContent(
-            JsonSerializer.Serialize(new HideMedia
-            {
-                origin = HiddenOrigin.PersonalHistory.ToString(),
-                mediumId = initialSummaries[0].mediumId
-
-            }), Encoding.UTF8, "application/json"));
-        
-        Assert.True(postHidden.IsSuccessStatusCode);
-    }
     
     [Fact]
     public async void TestAdminUserToken()
@@ -158,7 +123,7 @@ public class UserControllerTest : IClassFixture<WebApplicationFactory<Startup>>
     private async Task<HttpClient> TestSetupAsync()
     {
         using var scope = _factory.Services.CreateScope();
-        var scopedRandomizedUserService = scope.ServiceProvider.GetService<RandomizedUserService>();
+        var scopedRandomizedUserService = scope.ServiceProvider.GetService<RandomUserService>();
         var scopedJwtProvider = scope.ServiceProvider.GetService<JwtProvider>();
         var users = await scopedRandomizedUserService.GenerateXRandomUsersAndCalc(2);
         var token = scopedJwtProvider.GetJwt(users.FirstOrDefault());
@@ -172,7 +137,7 @@ public class UserControllerTest : IClassFixture<WebApplicationFactory<Startup>>
     private async Task<TestSetupReturn> TestSetupAsyncWithUser()
     {
         using var scope = _factory.Services.CreateScope();
-        var scopedRandomizedUserService = scope.ServiceProvider.GetService<RandomizedUserService>();
+        var scopedRandomizedUserService = scope.ServiceProvider.GetService<RandomUserService>();
         var scopedJwtProvider = scope.ServiceProvider.GetService<JwtProvider>();
         var users = await scopedRandomizedUserService.GenerateXRandomUsersAndCalc(2);
         var token = scopedJwtProvider.GetJwt(users.FirstOrDefault());

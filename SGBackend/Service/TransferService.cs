@@ -1,19 +1,25 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using SGBackend.Controllers;
+using SGBackend.Controllers.Model;
 using SGBackend.Entities;
 
 namespace SGBackend.Service;
 
+/// <summary>
+/// Takes care of initializing dev from prod for example
+/// </summary>
 public class TransferService
 {
-    private readonly ParalellAlgoService _algoService;
+    private readonly MatchingService _algoService;
 
     private readonly SgDbContext _dbContext;
+    
     private readonly IHttpClientFactory _httpClientFactory;
+    
     private readonly UserService _userService;
 
-    public TransferService(SgDbContext dbContext, UserService userService, ParalellAlgoService algoService,
+    public TransferService(SgDbContext dbContext, UserService userService, MatchingService algoService,
         IHttpClientFactory httpClientFactory)
     {
         _dbContext = dbContext;

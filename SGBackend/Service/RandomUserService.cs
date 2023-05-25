@@ -1,30 +1,30 @@
 using System.Text.Json;
 using SGBackend.Connector.Spotify;
+using SGBackend.Connector.Spotify.Model;
 using SGBackend.Entities;
 
 namespace SGBackend.Service;
 
 /// <summary>
-///     For development purposes only!
-///     Generates random users based on the same dummy template data
+///  For development purposes only!
+///  Generates random users based on the same dummy template data
 /// </summary>
-public class RandomizedUserService
+public class RandomUserService
 {
     private static readonly Random rnd = new();
 
     private readonly SgDbContext _dbContext;
 
-    private readonly ParalellAlgoService _paralellAlgoService;
+    private readonly MatchingService _matchingService;
 
     private readonly UserService _userService;
-
-
-    public RandomizedUserService(SgDbContext dbContext, UserService userService,
-        ParalellAlgoService paralellAlgoService)
+    
+    public RandomUserService(SgDbContext dbContext, UserService userService,
+        MatchingService matchingService)
     {
         _dbContext = dbContext;
         _userService = userService;
-        _paralellAlgoService = paralellAlgoService;
+        _matchingService = matchingService;
     }
 
     public static string RandomString(int length)
@@ -79,7 +79,7 @@ public class RandomizedUserService
 
         await _dbContext.SaveChangesAsync();
 
-        foreach (var user in users) await _paralellAlgoService.Process(user.Id, GetRandomizedHistory());
+        foreach (var user in users) await _matchingService.Process(user.Id, GetRandomizedHistory());
 
         return users;
     }

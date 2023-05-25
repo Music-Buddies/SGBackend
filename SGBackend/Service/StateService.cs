@@ -3,11 +3,11 @@ using EntityFrameworkQueryableExtensions = Microsoft.EntityFrameworkCore.EntityF
 
 namespace SGBackend.Service;
 
-public class StateManager
+public class StateService
 {
     private readonly SgDbContext _dbContext;
 
-    public StateManager(SgDbContext dbContext)
+    public StateService(SgDbContext dbContext)
     {
         _dbContext = dbContext;
     }

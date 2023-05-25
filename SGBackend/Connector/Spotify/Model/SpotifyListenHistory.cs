@@ -1,6 +1,6 @@
 using SGBackend.Entities;
 
-namespace SGBackend.Connector.Spotify;
+namespace SGBackend.Connector.Spotify.Model;
 
 public class SpotifyListenHistory
 {

@@ -1,12 +1,13 @@
 using Microsoft.AspNetCore.Authentication.OAuth;
 using Microsoft.EntityFrameworkCore;
+using SGBackend.Connector.Spotify.Model;
 using SGBackend.Entities;
 using SGBackend.Provider;
 using SGBackend.Service;
 
 namespace SGBackend.Connector.Spotify;
 
-public class SpotifyConnector : IContentConnector
+public class SpotifyConnector
 {
     private readonly SgDbContext _dbContext;
 
@@ -48,7 +49,7 @@ public class SpotifyConnector : IContentConnector
     public async Task<UserLoggedInResult> HandleUserLoggedIn(OAuthCreatingTicketContext context)
     {
         var claimsIdentity = context.Identity;
-        _logger.LogInformation(string.Join(", ", claimsIdentity.Claims.Select(claim => claim.ToString())));
+        _logger.LogInformation("User logged in {claims}", string.Join(", ", claimsIdentity.Claims.Select(claim => claim.ToString())));
 
         var spotifyUserUrl = claimsIdentity.FindFirst("urn:spotify:url");
         // user registered freshly
@@ -110,7 +111,7 @@ public class SpotifyConnector : IContentConnector
         if (accessToken == null) return null;
 
         var history =
-            await _spotifyApi.GetEntireAvailableHistory("Bearer " + accessToken);
+            await _spotifyApi.GetAvailableHistory("Bearer " + accessToken);
 
         return history;
     }

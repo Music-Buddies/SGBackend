@@ -5,9 +5,9 @@ namespace SGBackend.Connector.Spotify;
 
 public class SpotifyGroupedFetchJob : IJob
 {
-    private readonly ParalellAlgoService _algoService;
+    private readonly MatchingService _algoService;
 
-    public SpotifyGroupedFetchJob(ParalellAlgoService algoService)
+    public SpotifyGroupedFetchJob(MatchingService algoService)
     {
         _algoService = algoService;
     }

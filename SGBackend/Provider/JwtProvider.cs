@@ -11,8 +11,7 @@ namespace SGBackend.Provider;
 public class JwtProvider
 {
     private readonly ISecretsProvider _secretsProvider;
-
-
+    
     public JwtProvider(ISecretsProvider secretsProvider)
     {
         _secretsProvider = secretsProvider;
@@ -33,7 +32,7 @@ public class JwtProvider
         var handler = new JsonWebTokenHandler();
         var token = handler.CreateToken(new SecurityTokenDescriptor
         {
-            Issuer = "http://localhost:5173",
+            Issuer = "suggest-app.com",
             Subject = new ClaimsIdentity(defaultClaims.ToArray()),
             SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key),
                 SecurityAlgorithms.HmacSha512Signature),
@@ -53,7 +52,7 @@ public class JwtProvider
             ValidateIssuer = true,
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
-            ValidIssuer = "http://localhost:5173",
+            ValidIssuer = "suggest-app.com",
             IssuerSigningKey =
                 new SymmetricSecurityKey(Encoding.UTF8.GetBytes(JwtKey))
         };

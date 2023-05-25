@@ -1,4 +1,4 @@
-namespace SGBackend.Connector;
+namespace SGBackend.Connector.Spotify.Model;
 
 public class TokenResponse
 {

@@ -3,10 +3,12 @@ using Microsoft.EntityFrameworkCore;
 using Quartz;
 using SecretsProvider;
 using SGBackend.Connector.Spotify;
+using SGBackend.Controllers.Model;
 using SGBackend.Entities;
 using SGBackend.Models;
 using SGBackend.Provider;
 using SGBackend.Service;
+using Stats = SGBackend.Controllers.Model.Stats;
 
 namespace SGBackend.Controllers;
 
@@ -14,19 +16,15 @@ namespace SGBackend.Controllers;
 [Route("admin")]
 public class AdminController : ControllerBase
 {
-    private readonly ParalellAlgoService _algoService;
+    private readonly MatchingService _algoService;
 
     private readonly SgDbContext _dbContext;
 
     private readonly JwtProvider _jwtProvider;
 
-    private readonly ISchedulerFactory _schedulerFactory;
-
     private readonly ISecretsProvider _secretsProvider;
 
     private readonly TransferService _transferService;
-
-    private readonly UserService _userService;
 
     private readonly SpotifyConnector _spotifyConnector;
 
@@ -34,14 +32,11 @@ public class AdminController : ControllerBase
 
     private readonly ILogger<AdminController> _logger;
 
-    public AdminController(ParalellAlgoService algoService, SgDbContext dbContext, UserService userService,
-        ISchedulerFactory schedulerFactory, ISecretsProvider secretsProvider, TransferService transferService,
+    public AdminController(MatchingService algoService, SgDbContext dbContext, ISecretsProvider secretsProvider, TransferService transferService,
         JwtProvider jwtProvider, SpotifyConnector spotifyConnector, ISpotifyApi spotifyApi, ILogger<AdminController> logger)
     {
         _algoService = algoService;
         _dbContext = dbContext;
-        _userService = userService;
-        _schedulerFactory = schedulerFactory;
         _secretsProvider = secretsProvider;
         _transferService = transferService;
         _jwtProvider = jwtProvider;
@@ -49,13 +44,12 @@ public class AdminController : ControllerBase
         _spotifyApi = spotifyApi;
         _logger = logger;
     }
-
-    private bool AdminTokenValid(string adminToken)
-    {
-        var secrets = _secretsProvider.GetSecret<Secrets>();
-        return secrets.AdminToken == adminToken;
-    }
     
+    /// <summary>
+    /// Need for providing external partners, like apple, google access to an account which they can test the app with.
+    /// </summary>
+    /// <param name="loginToken"></param>
+    /// <returns></returns>
     [HttpGet("login-with-token/{loginToken}")]
     public async Task<ActionResult<AdminTokenResponse>> LoginWithToken(string loginToken)
     {
@@ -114,8 +108,13 @@ public class AdminController : ControllerBase
         return Ok();
     }
 
+    /// <summary>
+    /// Used in the dev stage for easy user impersonation
+    /// </summary>
+    /// <param name="adminPassword"></param>
+    /// <returns></returns>
     [HttpGet("list-users/{adminPassword}")]
-    public async Task<ActionResult<AdminUser[]>> GetAdminUsers(string adminPassword)
+    public async Task<ActionResult<AdminUser[]>> GetUsers(string adminPassword)
     {
         if (!AdminTokenValid(adminPassword)) return Unauthorized();
         var users = await _dbContext.User.ToArrayAsync();
@@ -126,8 +125,14 @@ public class AdminController : ControllerBase
         }).ToArray();
     }
 
+    /// <summary>
+    /// Used in the dev stage for easy user impersonation
+    /// </summary>
+    /// <param name="userId"></param>
+    /// <param name="adminPassword"></param>
+    /// <returns></returns>
     [HttpGet("get-token/{userId}/{adminPassword}")]
-    public async Task<ActionResult<AdminTokenResponse>> GetAdminToken(string userId, string adminPassword)
+    public async Task<ActionResult<AdminTokenResponse>> GetToken(string userId, string adminPassword)
     {
         if (!AdminTokenValid(adminPassword)) return Unauthorized();
         var guid = Guid.Parse(userId);
@@ -140,6 +145,10 @@ public class AdminController : ControllerBase
         };
     }
 
+    /// <summary>
+    /// Used in several apis that flex the stats of our suggest app
+    /// </summary>
+    /// <returns></returns>
     [HttpGet("stats")]
     public async Task<Stats> GetStats()
     {
@@ -152,7 +161,12 @@ public class AdminController : ControllerBase
             UserMinutes = summaries / 60
         };
     }
-
+    
+    /// <summary>
+    /// For manually migrating the database
+    /// </summary>
+    /// <param name="exportContainer"></param>
+    /// <returns></returns>
     [HttpPost("importUsers")]
     public async Task<IActionResult> ImportUsers(ExportContainer exportContainer)
     {
@@ -163,6 +177,11 @@ public class AdminController : ControllerBase
         return Ok();
     }
 
+    /// <summary>
+    /// Creates an export of all users and their media. The dev stage uses this to initialize itself to the most recent prod state.
+    /// </summary>
+    /// <param name="adminToken"></param>
+    /// <returns></returns>
     [HttpPost("exportUsers")]
     public async Task<ActionResult<ExportContainer>> ExportUsers(string adminToken)
     {
@@ -170,18 +189,10 @@ public class AdminController : ControllerBase
 
         return await _transferService.ExportUsers();
     }
-}
-
-public class ExportContainer
-{
-    public string adminToken { get; set; }
-    public List<ExportUser> users { get; set; }
-    public List<ExportMedium> media { get; set; }
-}
-
-public class Stats
-{
-    public long UserMinutes { get; set; }
-
-    public long Users { get; set; }
+    
+    private bool AdminTokenValid(string adminToken)
+    {
+        var secrets = _secretsProvider.GetSecret<Secrets>();
+        return secrets.AdminToken == adminToken;
+    }
 }

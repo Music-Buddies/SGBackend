@@ -2,26 +2,28 @@ using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using SecretsProvider;
 using SGBackend.Connector.Spotify;
+using SGBackend.Connector.Spotify.Model;
 using SGBackend.Entities;
 using SGBackend.Provider;
 
 namespace SGBackend.Service;
 
 /// <summary>
-///     needs to be registered as singleton
+/// needs to be registered as singleton
 /// </summary>
-public class ParalellAlgoService
+public class MatchingService
 {
-    private readonly ILogger<ParalellAlgoService> _logger;
+    private readonly ILogger<MatchingService> _logger;
 
     private readonly SemaphoreSlim _mediaGlobalLock = new(1, 1);
 
     private readonly SemaphoreSlim _mutualCalcSlim = new(1, 1);
+    
     private readonly IServiceScopeFactory _scopeFactory;
 
     private readonly Dictionary<Guid, SemaphoreSlim> _userSlims = new();
 
-    public ParalellAlgoService(IServiceScopeFactory scopeFactory, ILogger<ParalellAlgoService> logger)
+    public MatchingService(IServiceScopeFactory scopeFactory, ILogger<MatchingService> logger)
     {
         _scopeFactory = scopeFactory;
         _logger = logger;
@@ -43,13 +45,12 @@ public class ParalellAlgoService
         
         if (mediaToInsert.Any())
         {
-            
             // try fetch bpm with existing token in cache
             using var scope = _scopeFactory.CreateScope();
             var spotifyApi = scope.ServiceProvider.GetRequiredService<ISpotifyApi>();
             var tokenService = scope.ServiceProvider.GetRequiredService<AccessTokenProvider>();
         
-            if(tokenService.TryGetAccessToken(userId, out var token))
+            if(tokenService.TryGetTokenFromCache(userId, out var token))
             {
                 foreach (var medium in mediaToInsert)
                 {
