@@ -19,47 +19,6 @@ public class YouController : ControllerBase
         _dbContext = dbContext;
     }
     
-    [Authorize]
-    [HttpDelete("followers/{guid}")]
-    public async Task<IActionResult> DeleteFollowUser(string guid)
-    {
-        var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
-        var userFollowToDelete = Guid.Parse(guid);
-
-        if (!(await _dbContext.User.AnyAsync(u => u.Id == userFollowToDelete))) return NotFound("Specified user id not found");
-
-        var follower = await _dbContext.Follower.FirstOrDefaultAsync(f =>
-            f.UserFollowingId == userId && f.UserBeingFollowedId == userFollowToDelete);
-
-        if (follower != null)
-        {
-            _dbContext.Follower.Remove(follower);
-            await _dbContext.SaveChangesAsync();
-        }
-        
-        return Ok();
-    }
-    
-    [Authorize]
-    [HttpPost("followers/{guid}")]
-    public async Task<IActionResult> PostFollowUser(string guid)
-    {
-        var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
-        var userToFollow = Guid.Parse(guid);
-
-        if (!(await _dbContext.User.AnyAsync(u => u.Id == userToFollow))) return NotFound("Specified user id not found");
-        
-        await _dbContext.Follower.AddAsync(new Follower
-        {
-            UserFollowingId = userId,
-            UserBeingFollowedId = userToFollow
-        });
-        await _dbContext.SaveChangesAsync();
-
-        return Ok();
-    }
-    
-    
     /// <summary>
     /// Returns the users that the caller follows
     /// </summary>
@@ -204,7 +163,7 @@ public class YouController : ControllerBase
 
         if (dbUser == null) return Unauthorized();
 
-        return Ok(await GetProfileInformationGuid(dbUser));
+        return Ok(await _dbContext.GetProfileInformationGuid(dbUser));
     }
     
     [Authorize]
@@ -215,10 +174,10 @@ public class YouController : ControllerBase
         var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
         if (limitKey != null)
         {
-            return await FetchProfileMediaUntil(userId, LimitKeyToDate(limitKey), limit);
+            return await _dbContext.FetchProfileMediaUntil(userId, HelperExtensions.LimitKeyToDate(limitKey), limit);
         }
 
-        return (await FetchProfileMedia(userId, limit)).ToArray();
+        return (await _dbContext.FetchProfileMedia(userId, limit)).ToArray();
     }
 
     /// <summary>
@@ -441,99 +400,6 @@ public class YouController : ControllerBase
 
         return summaries.OrderByDescending(ms => ms.listenedSeconds).ToArray();
     }
-
-    private async Task<ProfileMediaModel[]> FetchProfileMediaUntil(Guid userId, DateTime untilTime, int? limit)
-    {
-        var hiddenMedia = await _dbContext.HiddenMedia.Where(hm => hm.UserId == userId).ToArrayAsync();
-        var hiddenMediaHashSet = hiddenMedia.Select(hm => hm.MediumId).ToHashSet();
-
-        var records = await _dbContext.PlaybackRecords.Where(s => s.UserId == userId && s.PlayedAt > untilTime)
-            .ToArrayAsync();
-        var uniqueMediaIds = records.Select(r => r.MediumId).ToHashSet();
-
-        var medias = await _dbContext.Media.Include(m => m.Artists).Include(m => m.Images)
-            .Where(m => uniqueMediaIds.Contains(m.Id)).ToArrayAsync();
-        var mediaMap = medias.ToDictionary(m => m.Id, m => m);
-
-        // sum the records by medium id
-        var pseudoSummaries = records.GroupBy(r => r.MediumId).Select(g => new PlaybackSummary
-        {
-            TotalSeconds = g.Sum(r => r.PlayedSeconds),
-            Medium = mediaMap[g.Key],
-            MediumId = g.Key
-        }).OrderByDescending(ms => ms.TotalSeconds).ToArray();
-
-        PlaybackSummary[] summaries;
-        if (limit.HasValue)
-            summaries = pseudoSummaries.Take(limit.Value).ToArray();
-        else
-            summaries = pseudoSummaries;
-
-        return summaries.Where(s => !hiddenMediaHashSet.Contains(s.MediumId)).Select(ps =>
-            {
-                return ps.Medium.ToProfileMediaModel(ps.TotalSeconds);
-            })
-            .OrderByDescending(ms => ms.listenedSeconds)
-            .ToArray();
-    }
-
-    private async Task<ProfileMediaModel[]> FetchProfileMedia(Guid userId, int? limit)
-    {
-        var hiddenMedia = await _dbContext.HiddenMedia.Where(hm => hm.UserId == userId).ToArrayAsync();
-        var hiddenMediaHashSet = hiddenMedia.Select(hm => hm.MediumId).ToHashSet();
-
-        var summariesQuery = _dbContext.PlaybackSummaries
-            .Include(s => s.Medium).ThenInclude(m => m.Artists)
-            .Include(ps => ps.Medium).ThenInclude(m => m.Images)
-            .OrderByDescending(ps => ps.TotalSeconds)
-            .Where(s => s.UserId == userId);
-
-        PlaybackSummary[] summaries;
-        if (limit.HasValue)
-            summaries = await summariesQuery.Take(limit.Value).ToArrayAsync();
-        else
-            summaries = await summariesQuery.ToArrayAsync();
-
-        return summaries.Where(s => !hiddenMediaHashSet.Contains(s.MediumId)).Select(ps =>
-            {
-                return ps.Medium.ToProfileMediaModel(ps.TotalSeconds);
-            })
-            .OrderByDescending(ms => ms.listenedSeconds)
-            .ToArray();
-    }
-
-    private async Task<ProfileInformation> GetProfileInformationGuid(User dbUser, Guid? mainUser = null)
-    {
-        var userId = dbUser.Id;
-        var earliestRecord = dbUser.PlaybackRecords.MinBy(r => r.PlayedAt);
-        var profileInformation = new ProfileInformation
-        {
-            username = dbUser.Name,
-            trackingSince = earliestRecord?.PlayedAt,
-            profileImage = dbUser.SpotifyProfileUrl,
-            totalListenedSeconds = dbUser.PlaybackRecords.Sum(pr => pr.PlayedSeconds),
-            latestFetch = dbUser.Stats.LatestFetch,
-            language = dbUser.Language
-        };
-
-        if (mainUser.HasValue)
-        {
-            var match = await _dbContext.MutualPlaybackOverviews
-                .Include(m => m.User1)
-                .Include(m => m.User2)
-                .Include(m => m.MutualPlaybackEntries)
-                .FirstAsync(m =>
-                    (m.User1Id == userId && m.User2Id == mainUser) ||
-                    (m.User2Id == userId && m.User1Id == mainUser));
-
-            var totalListenedSecondsTogether =
-                match.MutualPlaybackEntries.Sum(e => Math.Min(e.PlaybackSecondsUser1, e.PlaybackSecondsUser2));
-
-            profileInformation.totalTogetherListenedSeconds = totalListenedSecondsTogether;
-        }
-
-        return profileInformation;
-    }
     
     private static Match[] CreateMatchesArray(IEnumerable<IGrouping<User, MutualPlaybackOverview>> matches)
     {
@@ -552,21 +418,5 @@ public class YouController : ControllerBase
 
         for (var i = 0; i < matchesArray.Length; i++) matchesArray[i].rank = i + 1;
         return matchesArray;
-    }
-
-    private DateTime LimitKeyToDate(string limitKey)
-    {
-        var now = DateTime.Now;
-        switch (limitKey)
-        {
-            case "1W":
-                return now.AddDays(-7);
-            case "1M":
-                return now.AddMonths(-1);
-            case "1Y":
-                return now.AddYears(-1);
-        }
-
-        throw new Exception("Limit key not parsable");
     }
 }
