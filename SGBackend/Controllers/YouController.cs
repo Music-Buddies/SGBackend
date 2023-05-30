@@ -9,14 +9,85 @@ using SGBackend.Models;
 namespace SGBackend.Controllers;
 
 [ApiController]
-[Route("user")]
-public class UserController : ControllerBase
+[Route("you")]
+public class YouController : ControllerBase
 {
     private readonly SgDbContext _dbContext;
 
-    public UserController(SgDbContext dbContext)
+    public YouController(SgDbContext dbContext)
     {
         _dbContext = dbContext;
+    }
+    
+    [Authorize]
+    [HttpDelete("followers/{guid}")]
+    public async Task<IActionResult> DeleteFollowUser(string guid)
+    {
+        var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+        var userFollowToDelete = Guid.Parse(guid);
+
+        if (!(await _dbContext.User.AnyAsync(u => u.Id == userFollowToDelete))) return NotFound("Specified user id not found");
+
+        var follower = await _dbContext.Follower.FirstOrDefaultAsync(f =>
+            f.UserFollowingId == userId && f.UserBeingFollowedId == userFollowToDelete);
+
+        if (follower != null)
+        {
+            _dbContext.Follower.Remove(follower);
+            await _dbContext.SaveChangesAsync();
+        }
+        
+        return Ok();
+    }
+    
+    [Authorize]
+    [HttpPost("followers/{guid}")]
+    public async Task<IActionResult> PostFollowUser(string guid)
+    {
+        var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+        var userToFollow = Guid.Parse(guid);
+
+        if (!(await _dbContext.User.AnyAsync(u => u.Id == userToFollow))) return NotFound("Specified user id not found");
+        
+        await _dbContext.Follower.AddAsync(new Follower
+        {
+            UserFollowingId = userId,
+            UserBeingFollowedId = userToFollow
+        });
+        await _dbContext.SaveChangesAsync();
+
+        return Ok();
+    }
+    
+    
+    /// <summary>
+    /// Returns the users that the caller follows
+    /// </summary>
+    /// <returns></returns>
+    [Authorize]
+    [HttpGet("following")]
+    public async Task<ModelUser[]> GetFollowedUsers()
+    {
+        var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+        var usersBeingFollowed = await _dbContext.Follower.Include(f => f.UserBeingFollowed)
+            .Where(u => u.UserFollowingId == userId).ToArrayAsync();
+
+        return usersBeingFollowed.Select(u => u.UserBeingFollowed.ToModelUser()).ToArray();
+    }
+    
+    /// <summary>
+    /// Returns the users that follow the caller
+    /// </summary>
+    /// <returns></returns>
+    [Authorize]
+    [HttpGet("followers")]
+    public async Task<ModelUser[]> GetFollowingUsers()
+    {
+        var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+        var usersBeingFollowed = await _dbContext.Follower.Include(f => f.UserFollowing)
+            .Where(u => u.UserBeingFollowedId == userId).ToArrayAsync();
+
+        return usersBeingFollowed.Select(u => u.UserFollowing.ToModelUser()).ToArray();
     }
 
     /// <summary>
@@ -121,15 +192,7 @@ public class UserController : ControllerBase
         return true;
     }
 
-    [Authorize]
-    [HttpGet("profile-information/{guid}")]
-    public async Task<ProfileInformation> GetProfileInformationForUser(string guid)
-    {
-        var dbUser = await _dbContext.User.Include(u => u.Stats).Include(u => u.PlaybackRecords)
-            .FirstAsync(u => u.Id == Guid.Parse(guid));
-        return await GetProfileInformationGuid(dbUser, Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value));
-    }
-
+    
     [Authorize]
     [HttpGet("profile-information")]
     public async Task<IActionResult> GetProfileInformation()
@@ -143,21 +206,7 @@ public class UserController : ControllerBase
 
         return Ok(await GetProfileInformationGuid(dbUser));
     }
-
-
-    [Authorize]
-    [HttpGet("spotify/profile-media/{guid}")]
-    public async Task<ProfileMediaModel[]> GetProfileMediaForOtherUser(string guid, int? limit,
-        [FromQuery(Name = "limit-key")] string? limitKey)
-    {
-        if (limitKey != null)
-        {
-            return await FetchProfileMediaUntil(Guid.Parse(guid), LimitKeyToDate(limitKey), limit);
-        }
-
-        return await FetchProfileMedia(Guid.Parse(guid), limit);
-    }
-
+    
     [Authorize]
     [HttpGet("spotify/profile-media")]
     public async Task<ProfileMediaModel[]> GetProfileMedia(int? limit,

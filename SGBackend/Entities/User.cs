@@ -1,4 +1,6 @@
-﻿namespace SGBackend.Entities;
+﻿using SGBackend.Models;
+
+namespace SGBackend.Entities;
 
 public enum Language
 {
@@ -33,10 +35,9 @@ public class User : BaseEntity
     {
         return new ModelUser
         {
-            Id = Id,
-            Name = Name,
-            SpotifyId = SpotifyId,
-            SpotifyProfileUrl = SpotifyProfileUrl
+            userId = Id,
+            userName = Name,
+            profileImage =  SpotifyProfileUrl
         };
     }
 
@@ -76,13 +77,4 @@ public class ExportUser
             Name = Name
         };
     }
-}
-
-public class ModelUser
-{
-    public Guid Id { get; set; }
-    public string Name { get; set; }
-    public string SpotifyId { get; set; }
-
-    public string SpotifyProfileUrl { get; set; }
 }

@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using SGBackend.Entities;
@@ -11,9 +12,10 @@ using SGBackend.Entities;
 namespace SGBackend.Migrations
 {
     [DbContext(typeof(SgDbContext))]
-    partial class SgDbContextModelSnapshot : ModelSnapshot
+    [Migration("20230530163750_Follower")]
+    partial class Follower
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
