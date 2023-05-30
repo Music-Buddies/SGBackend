@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using Refit;
 using SGBackend.Connector.Spotify.Model;
 
@@ -10,4 +11,14 @@ public interface ISpotifyApi
     
     [Get("/v1/audio-features/{id}")]
     public Task<ApiResponse<FeatureResponse>> GetFeatures([Header("Authorization")] string bearerToken, string id);
+
+    [Post("/v1/users/{userId}/playlists")]
+    public Task<ApiResponse<String>> PostPlaylist([Header("Authorization")] string bearerToken, string userId, [Body] PlayListBody body);
+}
+
+public class PlayListBody
+{
+    public string name { get; set; }
+
+    [JsonPropertyName("public")] public bool publicBool { get; set; } = false;
 }

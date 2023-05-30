@@ -21,6 +21,24 @@ public class DevTests : IClassFixture<WebApplicationFactory<Startup>>
     }
 
     [Fact]
+    public async void DevelopPlaylists()
+    {
+        using var scope = _factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<SgDbContext>();
+        var connector = scope.ServiceProvider.GetRequiredService<SpotifyConnector>();
+        var api = scope.ServiceProvider.GetRequiredService<ISpotifyApi>();
+        var tobe = await context.User.FirstAsync(u => u.Name == "Tobe");
+        var access = await connector.GetAccessTokenUsingRefreshToken(tobe.SpotifyRefreshToken);
+
+        var resp = await api.PostPlaylist("Bearer " + access.access_token, tobe.SpotifyId.Split("/").Last(),
+            new PlayListBody
+            {
+                name = "nog"
+            });
+        var respStr = resp.Content;
+    }
+
+    [Fact]
     public async void TestFeatureMigration()
     {
         using var scope = _factory.Services.CreateScope();
